@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#171717">
+  <title>Music Discovery</title>
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="stylesheet" href="./css/main.css">
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <p class="eyebrow">Biblioteca colaborativa</p>
+      <h1>Music Discovery</h1>
+    </div>
+    <button id="installButton" class="button button-secondary" hidden>Instalar</button>
+  </header>
+
+  <main>
+    <section class="hero panel">
+      <div>
+        <p class="eyebrow">Añadir descubrimiento</p>
+        <h2>Guarda la música antes de que se pierda en el chat.</h2>
+        <p>Pega un enlace de Spotify o YouTube. También podrás enviar enlaces directamente desde el menú Compartir del móvil.</p>
+      </div>
+      <form id="linkForm" class="share-form">
+        <label for="musicUrl">Enlace musical</label>
+        <div class="input-row">
+          <input id="musicUrl" name="url" type="url" required placeholder="https://open.spotify.com/track/…">
+          <button class="button" type="submit">Analizar</button>
+        </div>
+      </form>
+      <div id="linkResult" class="result" hidden></div>
+    </section>
+
+    <section class="stats-grid" aria-label="Resumen">
+      <article class="stat panel"><span>Total canciones</span><strong>0</strong></article>
+      <article class="stat panel"><span>Este mes</span><strong>0</strong></article>
+      <article class="stat panel"><span>Miembros</span><strong>0</strong></article>
+      <article class="stat panel"><span>Comentarios</span><strong>0</strong></article>
+    </section>
+
+    <section class="panel">
+      <div class="section-heading">
+        <div><p class="eyebrow">Actividad</p><h2>Últimas incorporaciones</h2></div>
+      </div>
+      <div class="empty-state">
+        <p>Aún no hay canciones. Añade el primer descubrimiento del grupo.</p>
+      </div>
+    </section>
+  </main>
+
+  <script type="module" src="./js/app.js"></script>
+</body>
+</html>
