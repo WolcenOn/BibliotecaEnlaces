@@ -1,13 +1,16 @@
 import { api, getApiUrl, setApiUrl } from "./api.js";
 
 const params = new URLSearchParams(location.search);
-const token = params.get("token");
+const token = params.get("token")?.trim();
+const apiFromLink = params.get("api")?.trim();
 const apiUrl = document.querySelector("#apiUrl");
 const message = document.querySelector("#message");
+
+if (apiFromLink) setApiUrl(apiFromLink);
 apiUrl.value = getApiUrl();
 
 if (!token) {
-  message.textContent = "El enlace no contiene un token de invitación.";
+  message.textContent = "El enlace no contiene un token de invitación válido.";
   document.querySelector("button").disabled = true;
 }
 
