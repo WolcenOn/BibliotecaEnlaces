@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#171717">
+  <title>Biblioteca · Music Discovery</title>
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="stylesheet" href="./css/main.css">
+</head>
+<body>
+  <header class="topbar">
+    <div><p class="eyebrow">Biblioteca colaborativa</p><h1>Music Discovery</h1></div>
+    <nav><a class="button button-secondary" href="./admin.html">Administración</a><button id="logout" class="button button-secondary">Salir</button></nav>
+  </header>
+  <main>
+    <section class="stats-grid" aria-label="Resumen">
+      <article class="stat panel"><span>Total canciones</span><strong id="total">0</strong></article>
+      <article class="stat panel"><span>Este mes</span><strong id="month">0</strong></article>
+      <article class="stat panel"><span>Miembros</span><strong id="members">0</strong></article>
+      <article class="stat panel"><span>Comentarios</span><strong id="commentCount">0</strong></article>
+    </section>
+
+    <section class="panel">
+      <div class="section-heading"><div><p class="eyebrow">Grupo activo</p><h2>Biblioteca musical</h2></div></div>
+      <label>Grupo<select id="groupSelect"></select></label>
+    </section>
+
+    <section class="panel">
+      <p class="eyebrow">Nuevo descubrimiento</p>
+      <h2>Añadir música</h2>
+      <form id="musicForm" class="share-form">
+        <label>Enlace<input id="musicUrl" type="url" required placeholder="https://open.spotify.com/track/…"></label>
+        <label>Título<input id="title" required></label>
+        <label>Artista<input id="artist"></label>
+        <label>Género<input id="genre" placeholder="Rock, electrónica, jazz…"></label>
+        <label>Comentario<textarea id="comment" rows="3"></textarea></label>
+        <button class="button" type="submit">Guardar canción</button>
+      </form>
+      <p id="formMessage"></p>
+    </section>
+
+    <section class="panel">
+      <div class="section-heading"><div><p class="eyebrow">Filtros</p><h2>Explorar</h2></div></div>
+      <form id="filters" class="share-form">
+        <label>Buscar<input id="search" type="search" placeholder="Título o artista"></label>
+        <label>Plataforma<select id="platform"><option value="">Todas</option><option value="spotify">Spotify</option><option value="youtube">YouTube</option><option value="other">Otros</option></select></label>
+        <label>Tipo<select id="type"><option value="">Todos</option><option value="track">Tema</option><option value="video">Vídeo</option><option value="playlist">Playlist</option><option value="album">Álbum</option><option value="link">Enlace</option></select></label>
+        <label>Género<input id="genreFilter"></label>
+        <button class="button button-secondary" type="submit">Aplicar filtros</button>
+      </form>
+    </section>
+
+    <section class="panel">
+      <div class="section-heading"><div><p class="eyebrow">Actividad</p><h2>Incorporaciones</h2></div></div>
+      <div id="library" class="music-list"></div>
+    </section>
+  </main>
+  <script type="module" src="./js/library.js"></script>
+</body>
+</html>
