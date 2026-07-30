@@ -5,6 +5,7 @@ import (
 	"net/url"
 	"strings"
 	"time"
+	"unicode"
 )
 
 func (a *api) registerMusicRoutes(mux *http.ServeMux) {
@@ -31,14 +32,32 @@ func (a *api) addMusic(w http.ResponseWriter, r *http.Request) {
 		Artist string `json:"artist"`
 		Genre string `json:"genre"`
 		Comment string `json:"comment"`
+		ImageURL string `json:"imageUrl"`
 	}
 	if !decodeJSON(w, r, &in) { return }
-	in.URL = strings.TrimSpace(in.URL); in.Title = strings.TrimSpace(in.Title); in.Artist = strings.TrimSpace(in.Artist); in.Genre = strings.TrimSpace(in.Genre); in.Comment = strings.TrimSpace(in.Comment)
-	parsed, err := url.ParseRequestURI(in.URL)
-	if err != nil || parsed.Scheme == "" || parsed.Host == "" { writeError(w, http.StatusBadRequest, "valid url is required"); return }
-	if in.Title == "" { in.Title = in.URL }
-	platform, kind := detectLink(in.URL)
-	externalID := externalIDFromURL(parsed, platform, kind)
+	in.URL = strings.TrimSpace(in.URL); in.Title = strings.TrimSpace(in.Title); in.Artist = strings.TrimSpace(in.Artist); in.Genre = strings.TrimSpace(in.Genre); in.Comment = strings.TrimSpace(in.Comment); in.ImageURL = strings.TrimSpace(in.ImageURL)
+
+	metadata, err := resolveMusicMetadata(r.Context(), in.URL)
+	if err != nil { writeError(w, http.StatusBadRequest, err.Error()); return }
+	in.URL = metadata.URL
+	if in.Title == "" { in.Title = metadata.Title }
+	if in.Artist == "" { in.Artist = metadata.Artist }
+	if in.ImageURL == "" { in.ImageURL = metadata.ImageURL }
+	if in.Title == "" { writeError(w, http.StatusBadRequest, "title is required when metadata is unavailable"); return }
+
+	parsed, _ := url.Parse(in.URL)
+	platform, kind := metadata.Platform, metadata.Type
+	externalID := metadata.ExternalID
+	if externalID == "" { externalID = externalIDFromURL(parsed, platform, kind) }
+
+	var duplicateID, duplicateTitle string
+	normalizedTitle, normalizedArtist := normalizeIdentity(in.Title), normalizeIdentity(in.Artist)
+	duplicateQuery := `SELECT gmi.id,mi.title FROM group_music_items gmi JOIN music_items mi ON mi.id=gmi.music_item_id WHERE gmi.group_id=$1 AND ((NULLIF($2,'') IS NOT NULL AND mi.platform=$3 AND mi.content_type=$4 AND mi.external_id=$2) OR ($5<>'' AND lower(regexp_replace(mi.title,'[^[:alnum:]]','','g'))=$5 AND ($6='' OR lower(regexp_replace(COALESCE(mi.artist,''),'[^[:alnum:]]','','g'))=$6))) LIMIT 1`
+	if err := a.db.QueryRow(r.Context(), duplicateQuery, groupID, externalID, platform, kind, normalizedTitle, normalizedArtist).Scan(&duplicateID, &duplicateTitle); err == nil {
+		writeJSON(w, http.StatusConflict, map[string]string{"error":"Esta canción ya existe en el grupo.", "duplicateId":duplicateID, "duplicateTitle":duplicateTitle})
+		return
+	}
+
 	tx, err := a.db.Begin(r.Context()); if err != nil { writeError(w, 500, "could not add music"); return }; defer tx.Rollback(r.Context())
 	var genreID any
 	if in.Genre != "" {
@@ -48,14 +67,14 @@ func (a *api) addMusic(w http.ResponseWriter, r *http.Request) {
 	}
 	var musicID string
 	if externalID != "" {
-		err = tx.QueryRow(r.Context(), `INSERT INTO music_items(platform,content_type,external_id,canonical_url,title,artist) VALUES($1,$2,$3,$4,$5,NULLIF($6,'')) ON CONFLICT(platform,content_type,external_id) DO UPDATE SET canonical_url=EXCLUDED.canonical_url,title=COALESCE(NULLIF(EXCLUDED.title,''),music_items.title),artist=COALESCE(NULLIF(EXCLUDED.artist,''),music_items.artist),updated_at=NOW() RETURNING id`, platform,kind,externalID,in.URL,in.Title,in.Artist).Scan(&musicID)
+		err = tx.QueryRow(r.Context(), `INSERT INTO music_items(platform,content_type,external_id,canonical_url,title,artist,image_url) VALUES($1,$2,$3,$4,$5,NULLIF($6,''),NULLIF($7,'')) ON CONFLICT(platform,content_type,external_id) DO UPDATE SET canonical_url=EXCLUDED.canonical_url,title=COALESCE(NULLIF(EXCLUDED.title,''),music_items.title),artist=COALESCE(NULLIF(EXCLUDED.artist,''),music_items.artist),image_url=COALESCE(NULLIF(EXCLUDED.image_url,''),music_items.image_url),updated_at=NOW() RETURNING id`, platform,kind,externalID,in.URL,in.Title,in.Artist,in.ImageURL).Scan(&musicID)
 	} else {
-		err = tx.QueryRow(r.Context(), `INSERT INTO music_items(platform,content_type,canonical_url,title,artist) VALUES($1,$2,$3,$4,NULLIF($5,'')) RETURNING id`,platform,kind,in.URL,in.Title,in.Artist).Scan(&musicID)
+		err = tx.QueryRow(r.Context(), `INSERT INTO music_items(platform,content_type,canonical_url,title,artist,image_url) VALUES($1,$2,$3,$4,NULLIF($5,''),NULLIF($6,'')) RETURNING id`,platform,kind,in.URL,in.Title,in.Artist,in.ImageURL).Scan(&musicID)
 	}
 	if err != nil { writeError(w,500,"could not save music item"); return }
 	var itemID string
-	err = tx.QueryRow(r.Context(), `INSERT INTO group_music_items(group_id,music_item_id,added_by,genre_id,initial_comment) VALUES($1,$2,$3,$4,NULLIF($5,'')) ON CONFLICT(group_id,music_item_id) DO UPDATE SET genre_id=COALESCE(EXCLUDED.genre_id,group_music_items.genre_id),initial_comment=COALESCE(NULLIF(EXCLUDED.initial_comment,''),group_music_items.initial_comment) RETURNING id`, groupID,musicID,claimsFrom(r.Context()).UserID,genreID,in.Comment).Scan(&itemID)
-	if err != nil { writeError(w,http.StatusConflict,"music item is already in this group"); return }
+	err = tx.QueryRow(r.Context(), `INSERT INTO group_music_items(group_id,music_item_id,added_by,genre_id,initial_comment) VALUES($1,$2,$3,$4,NULLIF($5,'')) RETURNING id`, groupID,musicID,claimsFrom(r.Context()).UserID,genreID,in.Comment).Scan(&itemID)
+	if err != nil { writeError(w,http.StatusConflict,"Esta canción ya existe en el grupo."); return }
 	if err := tx.Commit(r.Context()); err != nil { writeError(w,500,"could not finish music item"); return }
 	writeJSON(w,http.StatusCreated,map[string]string{"id":itemID})
 }
@@ -64,10 +83,10 @@ func (a *api) listMusic(w http.ResponseWriter, r *http.Request) {
 	groupID := r.PathValue("groupID")
 	if !a.isGroupMember(r, groupID) { writeError(w,403,"active group membership required"); return }
 	q := strings.TrimSpace(r.URL.Query().Get("q")); platform := strings.TrimSpace(r.URL.Query().Get("platform")); kind := strings.TrimSpace(r.URL.Query().Get("type")); genre := strings.TrimSpace(r.URL.Query().Get("genre"))
-	rows, err := a.db.Query(r.Context(), `SELECT gmi.id,mi.title,COALESCE(mi.artist,''),mi.canonical_url,mi.platform,mi.content_type,COALESCE(ge.name,''),u.display_name,gmi.added_at,COALESCE(AVG(ra.value),0),COUNT(DISTINCT ra.id),COUNT(DISTINCT co.id) FROM group_music_items gmi JOIN music_items mi ON mi.id=gmi.music_item_id JOIN users u ON u.id=gmi.added_by LEFT JOIN genres ge ON ge.id=gmi.genre_id LEFT JOIN ratings ra ON ra.group_music_item_id=gmi.id LEFT JOIN comments co ON co.group_music_item_id=gmi.id AND co.deleted_at IS NULL WHERE gmi.group_id=$1 AND ($2='' OR mi.platform=$2) AND ($3='' OR mi.content_type=$3) AND ($4='' OR ge.name=$4) AND ($5='' OR mi.title ILIKE '%'||$5||'%' OR COALESCE(mi.artist,'') ILIKE '%'||$5||'%') GROUP BY gmi.id,mi.id,ge.name,u.display_name ORDER BY gmi.added_at DESC LIMIT 200`,groupID,platform,kind,genre,q)
+	rows, err := a.db.Query(r.Context(), `SELECT gmi.id,mi.title,COALESCE(mi.artist,''),mi.canonical_url,mi.platform,mi.content_type,COALESCE(ge.name,''),u.display_name,gmi.added_at,COALESCE(AVG(ra.value),0),COUNT(DISTINCT ra.id),COUNT(DISTINCT co.id),COALESCE(mi.image_url,'') FROM group_music_items gmi JOIN music_items mi ON mi.id=gmi.music_item_id JOIN users u ON u.id=gmi.added_by LEFT JOIN genres ge ON ge.id=gmi.genre_id LEFT JOIN ratings ra ON ra.group_music_item_id=gmi.id LEFT JOIN comments co ON co.group_music_item_id=gmi.id AND co.deleted_at IS NULL WHERE gmi.group_id=$1 AND ($2='' OR mi.platform=$2) AND ($3='' OR mi.content_type=$3) AND ($4='' OR lower(ge.name)=lower($4)) AND ($5='' OR mi.title ILIKE '%'||$5||'%' OR COALESCE(mi.artist,'') ILIKE '%'||$5||'%') GROUP BY gmi.id,mi.id,ge.name,u.display_name ORDER BY gmi.added_at DESC LIMIT 200`,groupID,platform,kind,genre,q)
 	if err != nil { writeError(w,500,"could not load music library"); return }; defer rows.Close()
 	items := make([]map[string]any,0)
-	for rows.Next(){ var id,title,artist,link,p,k,g,addedBy string; var addedAt time.Time; var average float64; var votes,comments int64; if rows.Scan(&id,&title,&artist,&link,&p,&k,&g,&addedBy,&addedAt,&average,&votes,&comments)==nil { items=append(items,map[string]any{"id":id,"title":title,"artist":artist,"url":link,"platform":p,"type":k,"genre":g,"addedBy":addedBy,"addedAt":addedAt,"rating":average,"votes":votes,"comments":comments}) } }
+	for rows.Next(){ var id,title,artist,link,p,k,g,addedBy,imageURL string; var addedAt time.Time; var average float64; var votes,comments int64; if rows.Scan(&id,&title,&artist,&link,&p,&k,&g,&addedBy,&addedAt,&average,&votes,&comments,&imageURL)==nil { items=append(items,map[string]any{"id":id,"title":title,"artist":artist,"url":link,"platform":p,"type":k,"genre":g,"addedBy":addedBy,"addedAt":addedAt,"rating":average,"votes":votes,"comments":comments,"imageUrl":imageURL}) } }
 	writeJSON(w,200,items)
 }
 
@@ -99,7 +118,13 @@ func (a *api) dashboard(w http.ResponseWriter,r *http.Request){
 }
 
 func externalIDFromURL(u *url.URL, platform, kind string) string {
-	if platform=="youtube" { if kind=="playlist" { return u.Query().Get("list") }; if u.Host=="youtu.be" { return strings.Trim(strings.Split(u.Path,"/")[1]," ") }; return u.Query().Get("v") }
+	if platform=="youtube" { if kind=="playlist" { return u.Query().Get("list") }; return u.Query().Get("v") }
 	if platform=="spotify" { parts:=strings.Split(strings.Trim(u.Path,"/"),"/"); if len(parts)>=2{return parts[1]} }
 	return ""
+}
+
+func normalizeIdentity(value string) string {
+	var b strings.Builder
+	for _, r := range strings.ToLower(value) { if unicode.IsLetter(r) || unicode.IsDigit(r) { b.WriteRune(r) } }
+	return b.String()
 }
