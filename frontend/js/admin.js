@@ -1,4 +1,4 @@
-import { api, setToken } from "./api.js";
+import { api, getApiUrl, setToken } from "./api.js";
 
 const profile = document.querySelector("#profile");
 const groupSelect = document.querySelector("#groupSelect");
@@ -42,7 +42,10 @@ document.querySelector("#inviteForm").addEventListener("submit", async event => 
       method: "POST",
       body: JSON.stringify({ expiresHours: Number(document.querySelector("#expiresHours").value), maxUses: Number(document.querySelector("#maxUses").value) })
     });
-    inviteResult.innerHTML = `Enlace: <a href="${result.url}">${result.url}</a>`;
+    const invitationUrl = new URL(result.url);
+    invitationUrl.searchParams.set("api", getApiUrl());
+    const finalUrl = invitationUrl.toString();
+    inviteResult.innerHTML = `Enlace: <a href="${finalUrl}">${finalUrl}</a>`;
   } catch (error) {
     inviteResult.textContent = error.message;
   }
