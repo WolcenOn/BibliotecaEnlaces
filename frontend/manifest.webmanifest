@@ -2,13 +2,13 @@
   "name": "Music Discovery",
   "short_name": "Discovery",
   "description": "Biblioteca musical colaborativa para grupos.",
-  "start_url": "./index.html",
+  "start_url": "./library.html",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#0f0f10",
-  "theme_color": "#171717",
+  "background_color": "#09090b",
+  "theme_color": "#09090b",
   "share_target": {
-    "action": "./index.html",
+    "action": "./library.html",
     "method": "GET",
     "params": {
       "title": "title",
