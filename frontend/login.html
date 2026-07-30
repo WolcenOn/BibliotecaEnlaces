@@ -1,5 +1,50 @@
 <!doctype html>
-<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Acceso · Music Discovery</title><link rel="stylesheet" href="./css/main.css"></head>
-<body><main><section class="panel"><p class="eyebrow">Acceso privado</p><h1>Music Discovery</h1><p>Configura la API y entra con tu cuenta. La primera vez, crea el administrador y el grupo inicial.</p>
-<form id="loginForm" class="share-form"><label>URL de Railway<input id="apiUrl" type="url" required placeholder="https://tu-api.up.railway.app"></label><label>Correo<input id="email" type="email" required></label><label>Contraseña<input id="password" type="password" minlength="10" required></label><button class="button" type="submit">Entrar</button></form><p id="message"></p></section>
-<section class="panel"><p class="eyebrow">Primera configuración</p><h2>Crear administrador</h2><form id="setupForm" class="share-form"><label>Token de configuración<input id="setupToken" type="password" required></label><label>Nombre visible<input id="displayName" required></label><label>Nombre del grupo<input id="groupName" required></label><button class="button button-secondary" type="submit">Inicializar aplicación</button></form></section></main><script type="module" src="./js/login.js"></script></body></html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Acceso · Music Discovery</title>
+  <link rel="stylesheet" href="./css/main.css">
+</head>
+<body>
+  <main class="auth-layout">
+    <section class="panel auth-panel">
+      <p class="eyebrow">Acceso privado</p>
+      <h1>Music Discovery</h1>
+      <p>Configura la API y entra con tu cuenta.</p>
+      <form id="loginForm" class="share-form">
+        <label>URL de Railway<input id="apiUrl" type="url" required placeholder="https://tu-api.up.railway.app"></label>
+        <label>Correo<input id="email" type="email" required></label>
+        <label>Contraseña<input id="password" type="password" minlength="10" required></label>
+        <button class="button" type="submit">Entrar</button>
+      </form>
+      <p id="message"></p>
+    </section>
+
+    <section class="panel auth-panel">
+      <p class="eyebrow">Recuperación</p>
+      <h2>Restablecer contraseña del propietario</h2>
+      <p>Necesitas el valor actual de <code>ADMIN_SETUP_TOKEN</code> configurado en Railway.</p>
+      <form id="resetForm" class="share-form">
+        <label>Token de configuración<input id="resetSetupToken" type="password" required></label>
+        <label>Correo del propietario<input id="resetEmail" type="email" required></label>
+        <label>Nueva contraseña<input id="resetPassword" type="password" minlength="10" required></label>
+        <button class="button button-secondary" type="submit">Cambiar contraseña</button>
+      </form>
+    </section>
+
+    <details class="panel auth-panel">
+      <summary>Primera configuración</summary>
+      <p class="eyebrow">Solo para una instalación nueva</p>
+      <h2>Crear administrador</h2>
+      <form id="setupForm" class="share-form">
+        <label>Token de configuración<input id="setupToken" type="password" required></label>
+        <label>Nombre visible<input id="displayName" required></label>
+        <label>Nombre del grupo<input id="groupName" required></label>
+        <button class="button button-secondary" type="submit">Inicializar aplicación</button>
+      </form>
+    </details>
+  </main>
+  <script type="module" src="./js/login.js"></script>
+</body>
+</html>
