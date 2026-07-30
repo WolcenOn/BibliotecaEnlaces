@@ -3,7 +3,8 @@ WORKDIR /src
 COPY go.mod ./
 COPY cmd ./cmd
 COPY internal ./internal
-RUN sed -i '/mux.HandleFunc("POST \/api\/v1\/links\/inspect", inspectLink)/a\	a.registerMusicRoutes(mux)\n\ta.registerPasswordRecoveryRoutes(mux)' cmd/api/main.go
+RUN sed -i '/mux.HandleFunc("POST \/api\/v1\/links\/inspect", inspectLink)/a\	a.registerMusicRoutes(mux)\n\	a.registerPasswordRecoveryRoutes(mux)' cmd/api/main.go
+RUN sed -i 's#baseURL := strings.TrimRight(envOr("FRONTEND_APP_URL", "https://wolcenon.github.io/music-discovery-pwa"), "/")#baseURL := invitationFrontendURL()#' cmd/api/main.go
 RUN go mod tidy
 RUN CGO_ENABLED=0 GOOS=linux go build -mod=readonly -o /music-discovery-api ./cmd/api
 
