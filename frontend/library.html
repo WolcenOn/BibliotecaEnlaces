@@ -1,66 +1,17 @@
 <!doctype html>
 <html lang="es">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="theme-color" content="#09090b">
-  <title>Biblioteca · Music Discovery</title>
-  <link rel="manifest" href="./manifest.webmanifest">
-  <link rel="stylesheet" href="./css/main.css">
-</head>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#09090b"><title>Biblioteca · Music Discovery</title><link rel="manifest" href="./manifest.webmanifest"><link rel="stylesheet" href="./css/main.css"></head>
 <body>
-  <header class="topbar">
-    <div class="brand"><div class="brand-mark">♫</div><div><p class="eyebrow">Biblioteca colaborativa</p><h1>Music Discovery</h1></div></div>
-    <nav><a class="button button-secondary" href="./admin.html">Miembros</a><button id="logout" class="button button-secondary">Salir</button></nav>
-  </header>
-  <main>
-    <section class="stats-grid" aria-label="Resumen">
-      <article class="stat panel"><span>Total guardadas</span><strong id="total">0</strong></article>
-      <article class="stat panel"><span>Nuevas este mes</span><strong id="month">0</strong></article>
-      <article class="stat panel"><span>Miembros activos</span><strong id="members">0</strong></article>
-      <article class="stat panel"><span>Conversaciones</span><strong id="commentCount">0</strong></article>
-    </section>
-
-    <div class="workspace">
-      <aside class="sidebar">
-        <section class="panel panel-body">
-          <p class="eyebrow">Espacio activo</p><h2>Tu grupo</h2>
-          <label class="field">Seleccionar grupo<select id="groupSelect"></select></label>
-        </section>
-
-        <section class="panel panel-body">
-          <p class="eyebrow">Nuevo descubrimiento</p><h2>Añadir música</h2>
-          <form id="musicForm" class="share-form">
-            <label class="field">Enlace
-              <div class="url-row"><input id="musicUrl" type="url" required placeholder="Pega Spotify o YouTube"><button id="inspectButton" class="button button-secondary" type="button">Completar</button></div>
-            </label>
-            <div id="metadataPreview" hidden></div>
-            <div class="form-grid">
-              <label class="field field-wide">Título<input id="title" placeholder="Se completa automáticamente"></label>
-              <label class="field">Artista<input id="artist" placeholder="Artista o canal"></label>
-              <label class="field">Género<input id="genre" placeholder="Rock, electrónica…"></label>
-              <label class="field field-wide">Comentario<textarea id="comment" rows="3" placeholder="¿Por qué merece la pena escucharlo?"></textarea></label>
-            </div>
-            <input id="imageUrl" type="hidden">
-            <button class="button" type="submit">Guardar en la biblioteca</button>
-          </form>
-          <p id="formMessage" class="form-message"></p>
-        </section>
-      </aside>
-
-      <section class="panel">
-        <div class="section-heading"><div><p class="eyebrow">Colección</p><h2>Descubrimientos</h2><p>Busca, puntúa y comenta lo que comparte el grupo.</p></div></div>
-        <form id="filters" class="filters">
-          <input id="search" type="search" aria-label="Buscar" placeholder="Buscar título o artista">
-          <select id="platform" aria-label="Plataforma"><option value="">Todas las plataformas</option><option value="spotify">Spotify</option><option value="youtube">YouTube</option><option value="other">Otros</option></select>
-          <select id="type" aria-label="Tipo"><option value="">Todos los tipos</option><option value="track">Tema</option><option value="video">Vídeo</option><option value="playlist">Playlist</option><option value="album">Álbum</option><option value="link">Enlace</option></select>
-          <input id="genreFilter" aria-label="Género" placeholder="Filtrar género">
-          <button class="button button-secondary" type="submit">Filtrar</button>
-        </form>
-        <div id="library" class="music-list"></div>
-      </section>
-    </div>
-  </main>
-  <script type="module" src="./js/library.js"></script>
-</body>
-</html>
+<header class="topbar"><div class="brand"><div class="brand-mark">♫</div><div><p class="eyebrow">Biblioteca colaborativa</p><h1>Music Discovery</h1></div></div><nav><a class="button button-secondary" href="./admin.html">Miembros</a><button id="logout" class="button button-secondary">Salir</button></nav></header>
+<main>
+<section class="stats-grid" aria-label="Resumen"><article class="stat panel"><span>Total guardadas</span><strong id="total">0</strong></article><article class="stat panel"><span>Nuevas este mes</span><strong id="month">0</strong></article><article class="stat panel"><span>Miembros activos</span><strong id="members">0</strong></article><article class="stat panel"><span>Conversaciones</span><strong id="commentCount">0</strong></article></section>
+<section class="panel recent-panel"><div class="section-heading"><div><p class="eyebrow">Actividad reciente</p><h2>Últimas 5 incorporaciones</h2></div></div><div id="recentList" class="recent-list"></div></section>
+<div class="workspace"><aside class="sidebar">
+<section class="panel panel-body"><p class="eyebrow">Espacio activo</p><h2>Tu grupo</h2><label class="field">Seleccionar grupo<select id="groupSelect"></select></label></section>
+<section class="panel panel-body"><p class="eyebrow">Nuevo descubrimiento</p><h2>Añadir música</h2><form id="musicForm" class="share-form"><label class="field">Enlace<div class="url-row"><input id="musicUrl" type="url" required placeholder="Pega Spotify o YouTube"><button id="inspectButton" class="button button-secondary" type="button">Completar</button></div></label><div id="metadataPreview" hidden></div><div class="form-grid"><label class="field field-wide">Título<input id="title" placeholder="Se completa automáticamente"></label><label class="field">Artista<input id="artist" placeholder="Artista o canal"></label><label class="field">Género<select id="genre"><option value="">Sin género</option></select></label><label class="field field-wide">Comentario<textarea id="comment" rows="3" placeholder="¿Por qué merece la pena escucharlo?"></textarea></label></div><input id="imageUrl" type="hidden"><button class="button" type="submit">Guardar en la biblioteca</button></form><p id="formMessage" class="form-message"></p></section>
+</aside>
+<section class="panel"><div class="section-heading"><div><p class="eyebrow">Colección</p><h2>Descubrimientos</h2><p>Busca, puntúa, comenta y edita lo que comparte el grupo.</p></div></div><form id="filters" class="filters"><input id="search" type="search" aria-label="Buscar" placeholder="Buscar título o artista"><select id="platform" aria-label="Plataforma"><option value="">Todas las plataformas</option><option value="spotify">Spotify</option><option value="youtube">YouTube</option><option value="other">Otros</option></select><select id="type" aria-label="Tipo"><option value="">Todos los tipos</option><option value="track">Tema</option><option value="video">Vídeo</option><option value="playlist">Playlist</option><option value="album">Álbum</option><option value="link">Enlace</option></select><select id="genreFilter" aria-label="Género"><option value="">Todos los géneros</option></select><button class="button button-secondary" type="submit">Filtrar</button></form><div id="library" class="music-list"></div></section>
+</div>
+</main>
+<dialog id="editDialog"><form id="editForm" method="dialog" class="dialog-card"><div class="dialog-heading"><div><p class="eyebrow">Editar ficha</p><h2>Actualizar canción</h2></div><button id="closeEdit" class="icon-button" type="button" aria-label="Cerrar">×</button></div><input id="editId" type="hidden"><label class="field">Título<input id="editTitle" required></label><label class="field">Artista<input id="editArtist"></label><label class="field">Género<select id="editGenre"><option value="">Sin género</option></select></label><label class="field">Comentario<textarea id="editComment" rows="3"></textarea></label><label class="field">URL de portada<input id="editImageUrl" type="url"></label><p id="editMessage" class="form-message"></p><div class="dialog-actions"><button id="cancelEdit" class="button button-secondary" type="button">Cancelar</button><button class="button" type="submit">Guardar cambios</button></div></form></dialog>
+<script type="module" src="./js/library.js"></script></body></html>
