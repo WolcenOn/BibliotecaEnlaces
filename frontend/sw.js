@@ -1,4 +1,4 @@
-const CACHE_NAME = 'music-discovery-v2';
+const CACHE_NAME = 'music-discovery-v3';
 const APP_SHELL = [
   './',
   './index.html',
@@ -11,6 +11,8 @@ const APP_SHELL = [
   './js/login.js',
   './js/library.js',
   './js/share-entry.js',
+  './js/install.js',
+  './icons/app-icon.svg',
   './manifest.webmanifest'
 ];
 
