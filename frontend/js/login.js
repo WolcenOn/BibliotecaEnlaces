@@ -17,12 +17,22 @@ function show(text, error = false) {
   message.setAttribute("role", error ? "alert" : "status");
 }
 
+function continueAfterLogin() {
+  const shared = sessionStorage.getItem("musicDiscoveryPendingShare");
+  if (shared) {
+    sessionStorage.removeItem("musicDiscoveryPendingShare");
+    location.href = `./library.html?url=${encodeURIComponent(shared)}`;
+    return;
+  }
+  location.href = "./library.html";
+}
+
 document.querySelector("#loginForm").addEventListener("submit", async (event) => {
   event.preventDefault();
   try {
     const result = await api("/api/v1/auth/login", { method: "POST", body: JSON.stringify(values()) });
     setToken(result.token);
-    location.href = "./admin.html";
+    continueAfterLogin();
   } catch (error) {
     show(error.message, true);
   }
@@ -63,7 +73,7 @@ document.querySelector("#setupForm").addEventListener("submit", async (event) =>
       })
     });
     setToken(result.token);
-    location.href = "./admin.html";
+    continueAfterLogin();
   } catch (error) {
     show(error.message, true);
   }
