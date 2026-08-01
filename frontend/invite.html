@@ -1,3 +1,15 @@
 <!doctype html>
-<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Invitación · Music Discovery</title><link rel="stylesheet" href="./css/main.css"></head>
-<body><main><section class="panel"><p class="eyebrow">Invitación al grupo</p><h1>Solicitar acceso</h1><p>Completa tus datos. Un administrador deberá aprobar tu entrada.</p><form id="inviteForm" class="share-form"><label>URL de Railway<input id="apiUrl" type="url" required></label><label>Nombre visible<input id="displayName" required></label><label>Correo<input id="email" type="email" required></label><label>Contraseña<input id="password" type="password" minlength="10" required></label><button class="button" type="submit">Enviar solicitud</button></form><p id="message"></p></section></main><script type="module" src="./js/invite.js"></script></body></html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' https://music-discovery-pwa-production.up.railway.app; img-src 'self' https: data:; style-src 'self'; script-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <title>Invitación · Music Discovery</title>
+  <link rel="stylesheet" href="./css/main.css">
+</head>
+<body>
+  <main><section class="panel"><p class="eyebrow">Invitación al grupo</p><h1>Solicitar acceso</h1><p>Completa tus datos. Un administrador deberá aprobar tu entrada.</p><form id="inviteForm" class="share-form"><label>Nombre visible<input id="displayName" required></label><label>Correo<input id="email" type="email" autocomplete="username" required></label><label>Contraseña<input id="password" type="password" autocomplete="new-password" minlength="10" required></label><button class="button" type="submit">Enviar solicitud</button></form><p id="message"></p></section></main>
+  <script src="./js/config.js"></script>
+  <script type="module" src="./js/invite.js"></script>
+</body>
+</html>
