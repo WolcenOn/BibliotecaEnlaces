@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24.x'
+          cache-dependency-path: backend/go.sum
+      - name: Verify formatting
+        run: test -z "$(gofmt -l .)"
+      - name: Vet
+        run: go vet ./...
+      - name: Test
+        run: go test ./...
+      - name: Build deployment image
+        run: docker build -t music-discovery-api:ci .
+
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check JavaScript syntax
+        run: |
+          for file in frontend/js/*.js; do
+            node --check "$file"
+          done
+      - name: Guard administration against dynamic HTML injection
+        run: |
+          if grep -nE 'innerHTML|insertAdjacentHTML' frontend/js/admin.js; then
+            echo "admin.js must build untrusted content with DOM APIs and textContent"
+            exit 1
+          fi
