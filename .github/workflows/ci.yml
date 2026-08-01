@@ -19,6 +19,8 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: '1.24.x'
+      - name: Resolve Go dependencies
+        run: go mod tidy
       - name: Verify new security middleware formatting
         run: test -z "$(gofmt -l cmd/api/security.go)"
       - name: Vet
