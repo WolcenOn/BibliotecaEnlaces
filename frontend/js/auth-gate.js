@@ -1,13 +1,11 @@
-import { api, getApiUrl, setApiUrl, setToken } from "./api.js";
+import { api, setToken } from "./api.js";
 
 const dialog = document.querySelector("#loginDialog");
 const form = document.querySelector("#inlineLoginForm");
 const message = document.querySelector("#inlineLoginMessage");
-const apiInput = document.querySelector("#inlineApiUrl");
 
 if (dialog && form) {
   document.documentElement.classList.add("auth-required");
-  apiInput.value = getApiUrl();
   dialog.addEventListener("cancel", event => event.preventDefault());
 
   const openLogin = (text = "Inicia sesión para continuar.") => {
@@ -24,7 +22,6 @@ if (dialog && form) {
   form.addEventListener("submit", async event => {
     event.preventDefault();
     message.textContent = "Comprobando acceso…";
-    setApiUrl(apiInput.value);
     try {
       const result = await api("/api/v1/auth/login", {
         method: "POST",
@@ -46,9 +43,9 @@ if (dialog && form) {
     try {
       await api("/api/v1/me");
       unlock();
-    } catch (error) {
+    } catch {
       setToken("");
-      openLogin(error.message === "Configura primero la URL de Railway." ? error.message : "La sesión no existe o ha caducado.");
+      openLogin("La sesión no existe o ha caducado.");
     }
   })();
 }

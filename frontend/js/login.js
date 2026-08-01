@@ -1,11 +1,8 @@
-import { api, getApiUrl, setApiUrl, setToken } from "./api.js";
+import { api, setToken } from "./api.js";
 
-const apiUrl = document.querySelector("#apiUrl");
 const message = document.querySelector("#message");
-apiUrl.value = getApiUrl();
 
 function values() {
-  setApiUrl(apiUrl.value);
   return {
     email: document.querySelector("#email").value.trim(),
     password: document.querySelector("#password").value
@@ -27,7 +24,7 @@ function continueAfterLogin() {
   location.href = "./library.html";
 }
 
-document.querySelector("#loginForm").addEventListener("submit", async (event) => {
+document.querySelector("#loginForm").addEventListener("submit", async event => {
   event.preventDefault();
   try {
     const result = await api("/api/v1/auth/login", { method: "POST", body: JSON.stringify(values()) });
@@ -38,9 +35,8 @@ document.querySelector("#loginForm").addEventListener("submit", async (event) =>
   }
 });
 
-document.querySelector("#resetForm").addEventListener("submit", async (event) => {
+document.querySelector("#resetForm").addEventListener("submit", async event => {
   event.preventDefault();
-  setApiUrl(apiUrl.value);
   try {
     await api("/api/v1/setup/reset-owner-password", {
       method: "POST",
@@ -59,7 +55,7 @@ document.querySelector("#resetForm").addEventListener("submit", async (event) =>
   }
 });
 
-document.querySelector("#setupForm").addEventListener("submit", async (event) => {
+document.querySelector("#setupForm").addEventListener("submit", async event => {
   event.preventDefault();
   const credentials = values();
   try {

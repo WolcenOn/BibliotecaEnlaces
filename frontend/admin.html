@@ -1,3 +1,23 @@
 <!doctype html>
-<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Administración · Music Discovery</title><link rel="stylesheet" href="./css/main.css"><link rel="stylesheet" href="./css/auth-gate.css"></head>
-<body><header class="topbar"><div><p class="eyebrow">Administración</p><h1>Music Discovery</h1></div><nav><a class="button button-secondary" href="./library.html">Biblioteca</a><button id="logout" class="button button-secondary">Salir</button></nav></header><main><section class="panel"><h2>Tu cuenta</h2><div id="profile">Cargando…</div></section><section class="panel"><h2>Grupos</h2><select id="groupSelect"></select><form id="inviteForm" class="share-form"><label>Duración de la invitación<select id="expiresHours"><option value="168">7 días</option><option value="720" selected>30 días</option><option value="2160">90 días</option><option value="4380">6 meses</option><option value="8760">1 año</option></select></label><label>Usos máximos<input id="maxUses" type="number" value="1" min="1" max="100"></label><button class="button" type="submit">Crear invitación</button></form><p id="inviteResult"></p></section><section class="panel"><h2>Solicitudes pendientes</h2><div id="requests">Selecciona un grupo.</div></section></main><dialog id="loginDialog" class="login-dialog"><form id="inlineLoginForm" class="login-card"><p class="eyebrow">Acceso privado</p><h2>Iniciar sesión</h2><p class="muted">Introduce tus datos para acceder a la administración.</p><label>URL de Railway<input id="inlineApiUrl" type="url" required placeholder="https://tu-api.up.railway.app"></label><label>Correo<input id="inlineEmail" type="email" autocomplete="username" required></label><label>Contraseña<input id="inlinePassword" type="password" autocomplete="current-password" required></label><p id="inlineLoginMessage" class="form-message"></p><button class="button" type="submit">Entrar</button></form></dialog><script type="module" src="./js/auth-gate.js"></script><script type="module" src="./js/admin.js"></script></body></html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' https://music-discovery-pwa-production.up.railway.app; img-src 'self' https: data:; style-src 'self'; script-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <title>Administración · Music Discovery</title>
+  <link rel="stylesheet" href="./css/main.css">
+  <link rel="stylesheet" href="./css/auth-gate.css">
+</head>
+<body>
+  <header class="topbar"><div><p class="eyebrow">Administración</p><h1>Music Discovery</h1></div><nav><a class="button button-secondary" href="./library.html">Biblioteca</a><button id="logout" class="button button-secondary">Salir</button></nav></header>
+  <main>
+    <section class="panel"><h2>Tu cuenta</h2><div id="profile">Cargando…</div></section>
+    <section class="panel"><h2>Grupos</h2><select id="groupSelect"></select><form id="inviteForm" class="share-form"><label>Duración de la invitación<select id="expiresHours"><option value="168">7 días</option><option value="720" selected>30 días</option><option value="2160">90 días</option><option value="4380">6 meses</option><option value="8760">1 año</option></select></label><label>Usos máximos<input id="maxUses" type="number" value="1" min="1" max="100"></label><button class="button" type="submit">Crear invitación</button></form><p id="inviteResult"></p></section>
+    <section class="panel"><h2>Solicitudes pendientes</h2><div id="requests">Selecciona un grupo.</div></section>
+  </main>
+  <dialog id="loginDialog" class="login-dialog"><form id="inlineLoginForm" class="login-card"><p class="eyebrow">Acceso privado</p><h2>Iniciar sesión</h2><p class="muted">Introduce tus datos para acceder a la administración.</p><label>Correo<input id="inlineEmail" type="email" autocomplete="username" required></label><label>Contraseña<input id="inlinePassword" type="password" autocomplete="current-password" required></label><p id="inlineLoginMessage" class="form-message"></p><button class="button" type="submit">Entrar</button></form></dialog>
+  <script src="./js/config.js"></script>
+  <script type="module" src="./js/auth-gate.js"></script>
+  <script type="module" src="./js/admin.js"></script>
+</body>
+</html>

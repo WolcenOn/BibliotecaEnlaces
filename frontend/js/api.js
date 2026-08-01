@@ -1,25 +1,34 @@
-const API_KEY = "musicDiscoveryApiUrl";
 const TOKEN_KEY = "musicDiscoveryToken";
 
 export function getApiUrl() {
-  return (localStorage.getItem(API_KEY) || "").replace(/\/$/, "");
+  return String(window.APP_CONFIG?.apiUrl || "").trim().replace(/\/$/, "");
 }
 
-export function setApiUrl(value) {
-  localStorage.setItem(API_KEY, value.trim().replace(/\/$/, ""));
+export function setApiUrl() {
+  // La URL pública se define en js/config.js durante el despliegue.
 }
 
 export function getToken() {
-  return localStorage.getItem(TOKEN_KEY) || "";
+  const current = sessionStorage.getItem(TOKEN_KEY);
+  if (current) return current;
+
+  // Migración puntual: elimina tokens persistentes creados por versiones anteriores.
+  const legacy = localStorage.getItem(TOKEN_KEY) || "";
+  if (legacy) {
+    sessionStorage.setItem(TOKEN_KEY, legacy);
+    localStorage.removeItem(TOKEN_KEY);
+  }
+  return legacy;
 }
 
 export function setToken(value) {
-  value ? localStorage.setItem(TOKEN_KEY, value) : localStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(TOKEN_KEY);
+  value ? sessionStorage.setItem(TOKEN_KEY, value) : sessionStorage.removeItem(TOKEN_KEY);
 }
 
 export async function api(path, options = {}) {
   const base = getApiUrl();
-  if (!base) throw new Error("Configura primero la URL de Railway.");
+  if (!base) throw new Error("La aplicación no tiene configurada la URL de la API.");
   const headers = new Headers(options.headers || {});
   if (options.body && !headers.has("Content-Type")) headers.set("Content-Type", "application/json");
   const token = getToken();
