@@ -6,10 +6,11 @@ const message = document.querySelector("#inlineLoginMessage");
 const apiInput = document.querySelector("#inlineApiUrl");
 
 if (dialog && form) {
+  document.documentElement.classList.add("auth-required");
   apiInput.value = getApiUrl();
+  dialog.addEventListener("cancel", event => event.preventDefault());
 
   const openLogin = (text = "Inicia sesión para continuar.") => {
-    document.documentElement.classList.add("auth-required");
     message.textContent = text;
     if (!dialog.open) dialog.showModal();
     setTimeout(() => document.querySelector("#inlineEmail")?.focus(), 50);
