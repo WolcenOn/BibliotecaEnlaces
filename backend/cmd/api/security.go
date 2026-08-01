@@ -21,7 +21,7 @@ func allowedOrigins() map[string]struct{} {
 	return origins
 }
 
-func cors(next http.Handler) http.Handler {
+func secureCors(next http.Handler) http.Handler {
 	origins := allowedOrigins()
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("X-Content-Type-Options", "nosniff")
