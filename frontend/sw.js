@@ -1,15 +1,19 @@
-const CACHE_NAME = 'music-discovery-v4';
+const CACHE_NAME = 'music-discovery-v5';
 const APP_SHELL = [
   './',
   './index.html',
   './login.html',
   './library.html',
+  './admin.html',
   './css/main.css',
   './css/library-layout.css',
+  './css/auth-gate.css',
   './js/app.js',
   './js/api.js',
   './js/login.js',
   './js/library.js',
+  './js/admin.js',
+  './js/auth-gate.js',
   './js/share-entry.js',
   './js/install.js',
   './icons/app-icon.svg',
