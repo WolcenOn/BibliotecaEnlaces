@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#09090b">
+  <title>Recursos · Biblioteca de Enlaces</title>
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="stylesheet" href="./css/main.css">
+  <link rel="stylesheet" href="./css/library-layout.css">
+  <link rel="stylesheet" href="./css/auth-gate.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand"><div class="brand-mark">↗</div><div><p class="eyebrow">Biblioteca configurable</p><h1>Recursos</h1></div></div>
+  <nav><a class="button button-secondary" href="./fields.html">Clasificación</a><a class="button button-secondary" href="./library.html">Vista anterior</a><button id="logout" class="button button-secondary">Salir</button></nav>
+</header>
+<main>
+  <section class="active-group panel"><div><p class="eyebrow">Biblioteca activa</p><label class="group-picker"><span class="sr-only">Seleccionar biblioteca</span><select id="groupSelect"></select></label></div><button id="toggleAdd" class="button" type="button">＋ Añadir recurso</button></section>
+
+  <section id="addPanel" class="panel panel-body" hidden>
+    <div class="section-heading"><div><p class="eyebrow">Nuevo recurso</p><h2>Revisar y guardar</h2><p>Los campos de clasificación dependen de la biblioteca seleccionada.</p></div></div>
+    <form id="resourceForm" class="share-form panel-form">
+      <label class="field field-wide">Enlace<div class="url-row"><input id="resourceUrl" type="url" required placeholder="https://…"><button id="inspectButton" class="button button-secondary" type="button">Reconocer</button></div></label>
+      <div id="metadataPreview" class="metadata-preview" hidden></div>
+      <div class="form-grid">
+        <label class="field field-wide">Título<input id="title" required placeholder="Título del recurso"></label>
+        <label class="field">Tipo técnico<select id="resourceType"><option value="link">Enlace</option><option value="pdf">PDF</option><option value="image">Imagen</option><option value="video">Vídeo</option><option value="audio">Audio</option><option value="document">Documento</option><option value="presentation">Presentación</option><option value="spreadsheet">Hoja de cálculo</option><option value="interactive">Interactivo</option></select></label>
+        <label class="field">Proveedor o fuente<input id="provider" placeholder="Drive, YouTube, sitio web…"></label>
+        <label class="field field-wide">Descripción<textarea id="description" rows="3"></textarea></label>
+        <label class="field field-wide">Comentario del grupo<textarea id="comment" rows="3"></textarea></label>
+        <label class="field field-wide">URL de miniatura<input id="thumbnailUrl" type="url" placeholder="Se completa cuando es posible"></label>
+        <div id="dynamicFields" class="form-grid field-wide"></div>
+        <label class="field field-wide">Etiquetas<input id="tags" placeholder="docker, fonología, imprimible"></label>
+      </div>
+      <div class="form-actions"><button class="button" type="submit">Guardar recurso</button><p id="formMessage" class="form-message"></p></div>
+    </form>
+  </section>
+
+  <section class="panel panel-body">
+    <div class="section-heading"><div><p class="eyebrow">Colección</p><h2>Recursos guardados</h2></div><button id="reload" class="button button-secondary" type="button">Actualizar</button></div>
+    <div id="resourceList" class="music-list"></div>
+  </section>
+</main>
+<dialog id="loginDialog" class="login-dialog"><form id="inlineLoginForm" class="login-card"><p class="eyebrow">Acceso privado</p><h2>Iniciar sesión</h2><label>Correo<input id="inlineEmail" type="email" required></label><label>Contraseña<input id="inlinePassword" type="password" required></label><p id="inlineLoginMessage" class="form-message"></p><button class="button" type="submit">Entrar</button></form></dialog>
+<script src="./js/config.js"></script><script type="module" src="./js/auth-gate.js"></script><script type="module" src="./js/resources.js"></script>
+</body>
+</html>
