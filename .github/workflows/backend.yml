@@ -1,0 +1,28 @@
+name: Backend
+
+on:
+  push:
+    branches: [main, feat/dynamic-fields-api]
+  pull_request:
+    paths:
+      - "backend/**"
+      - ".github/workflows/backend.yml"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+      - name: Format check
+        run: test -z "$(gofmt -l .)"
+      - name: Download modules
+        run: go mod download
+      - name: Test and compile
+        run: go test ./...
