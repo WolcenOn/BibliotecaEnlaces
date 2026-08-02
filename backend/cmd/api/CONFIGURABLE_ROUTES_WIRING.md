@@ -1,9 +1,13 @@
 # Rutas configurables
 
-Las rutas configurables ya están registradas desde `registerRoutes` en `main.go` mediante:
+Los handlers están implementados en `configurable_resources.go` y registrados desde `main.go` mediante:
 
 ```go
 a.registerConfigurableRoutes(mux)
 ```
 
-Este archivo se mantiene como referencia de la integración realizada.
+La función registra campos personalizados, recursos genéricos y el endpoint autenticado de inspección de metadatos:
+
+```text
+POST /api/v1/resources/inspect
+```
