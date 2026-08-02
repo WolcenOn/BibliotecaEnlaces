@@ -7,6 +7,7 @@ const resourceList = $("#resourceList");
 const addPanel = $("#addPanel");
 const formMessage = $("#formMessage");
 let fields = [];
+let inspection = null;
 
 const esc = (value = "") => String(value).replace(/[&<>'"]/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" }[char]));
 
@@ -48,36 +49,46 @@ function collectFieldValues() {
   return values;
 }
 
-function detectFromURL(raw) {
-  const url = new URL(raw);
-  const host = url.hostname.replace(/^www\./, "");
-  const path = url.pathname.toLowerCase();
-  if (path.endsWith(".pdf")) return { resourceType: "pdf", provider: host };
-  if (/\.(png|jpe?g|gif|webp|svg)$/.test(path)) return { resourceType: "image", provider: host, thumbnailUrl: raw };
-  if (["youtube.com", "youtu.be", "vimeo.com"].includes(host)) return { resourceType: "video", provider: host };
-  if (host === "docs.google.com") {
-    if (path.includes("/document/")) return { resourceType: "document", provider: "Google Docs" };
-    if (path.includes("/presentation/")) return { resourceType: "presentation", provider: "Google Slides" };
-    if (path.includes("/spreadsheets/")) return { resourceType: "spreadsheet", provider: "Google Sheets" };
-  }
-  if (host === "drive.google.com") return { resourceType: "document", provider: "Google Drive" };
-  return { resourceType: "link", provider: host };
+function applyInspection(data, raw) {
+  inspection = data;
+  $("#resourceUrl").value = data.url || raw;
+  if (data.title) $("#title").value = data.title;
+  if (data.description) $("#description").value = data.description;
+  $("#resourceType").value = data.resourceType || "link";
+  $("#provider").value = data.provider || "";
+  $("#thumbnailUrl").value = data.thumbnailUrl || "";
+
+  const preview = $("#metadataPreview");
+  preview.hidden = false;
+  preview.className = "metadata-preview";
+  const thumbnail = data.thumbnailUrl
+    ? `<img src="${esc(data.thumbnailUrl)}" alt="" loading="lazy">`
+    : `<div class="cover cover-placeholder">↗</div>`;
+  preview.innerHTML = `${thumbnail}<div><strong>${esc(data.title || data.provider || "Enlace reconocido")}</strong><p class="muted">${esc(data.provider || "Enlace")} · ${esc(data.resourceType || "link")}${data.mimeType ? ` · ${esc(data.mimeType)}` : ""}</p></div>`;
 }
 
 async function inspectResource() {
   const raw = $("#resourceUrl").value.trim();
   if (!raw) return;
+  const button = $("#inspectButton");
+  button.disabled = true;
+  button.textContent = "Analizando…";
+  formMessage.textContent = "Consultando metadatos y miniatura…";
   try {
-    const detected = detectFromURL(raw);
-    $("#resourceType").value = detected.resourceType;
-    $("#provider").value = detected.provider;
-    if (detected.thumbnailUrl) $("#thumbnailUrl").value = detected.thumbnailUrl;
-    const preview = $("#metadataPreview");
-    preview.hidden = false;
-    preview.innerHTML = `<div><strong>${esc(detected.provider)}</strong><p class="muted">Tipo detectado: ${esc(detected.resourceType)}</p></div>`;
-    formMessage.textContent = "Tipo detectado. Revisa el título, la miniatura y la clasificación.";
-  } catch {
-    formMessage.textContent = "El enlace no tiene un formato válido.";
+    const data = await api("/api/v1/resources/inspect", {
+      method: "POST",
+      body: JSON.stringify({ url: raw })
+    });
+    applyInspection(data, raw);
+    formMessage.textContent = data.title
+      ? "Datos completados. Revisa la clasificación y guarda."
+      : "Tipo detectado. Completa los campos que falten.";
+  } catch (error) {
+    inspection = null;
+    formMessage.textContent = `${error.message}. Puedes completar los datos manualmente.`;
+  } finally {
+    button.disabled = false;
+    button.textContent = "Completar";
   }
 }
 
@@ -101,6 +112,7 @@ $("#toggleAdd").addEventListener("click", () => {
 });
 $("#inspectButton").addEventListener("click", inspectResource);
 $("#resourceUrl").addEventListener("paste", () => setTimeout(inspectResource, 50));
+$("#resourceUrl").addEventListener("input", () => { inspection = null; });
 $("#reload").addEventListener("click", loadResources);
 groupSelect.addEventListener("change", refreshGroup);
 $("#logout").addEventListener("click", () => { setToken(""); location.href = "./login.html"; });
@@ -114,11 +126,13 @@ $("#resourceForm").addEventListener("submit", async event => {
       method: "POST",
       body: JSON.stringify({
         url,
-        normalizedUrl: url,
+        normalizedUrl: inspection?.finalUrl || url,
+        finalUrl: inspection?.finalUrl || "",
         title: $("#title").value.trim(),
         description: $("#description").value.trim(),
         resourceType: $("#resourceType").value,
         provider: $("#provider").value.trim(),
+        mimeType: inspection?.mimeType || "",
         thumbnailUrl: $("#thumbnailUrl").value.trim(),
         originalComment: $("#comment").value.trim(),
         sourceType: "manual",
@@ -127,6 +141,7 @@ $("#resourceForm").addEventListener("submit", async event => {
       })
     });
     event.target.reset();
+    inspection = null;
     renderDynamicFields();
     $("#metadataPreview").hidden = true;
     formMessage.textContent = "Recurso guardado.";
