@@ -16,8 +16,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/WolcenOn/music-discovery-pwa/backend/internal/auth"
-	"github.com/WolcenOn/music-discovery-pwa/backend/internal/database"
+	"github.com/WolcenOn/BibliotecaEnlaces/backend/internal/auth"
+	"github.com/WolcenOn/BibliotecaEnlaces/backend/internal/database"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -98,6 +98,7 @@ func (a *api) registerRoutes(mux *http.ServeMux) {
 	mux.Handle("GET /api/v1/groups/{groupID}/membership-requests", a.requireAuth(http.HandlerFunc(a.membershipRequests)))
 	mux.Handle("POST /api/v1/groups/{groupID}/membership-requests/{userID}/approve", a.requireAuth(http.HandlerFunc(a.approveMember)))
 	mux.HandleFunc("POST /api/v1/links/inspect", inspectLink)
+	a.registerConfigurableRoutes(mux)
 }
 
 func (a *api) health(w http.ResponseWriter, r *http.Request) {
@@ -233,8 +234,12 @@ func (a *api) createInvitation(w http.ResponseWriter, r *http.Request) {
 	if !decodeJSON(w, r, &in) {
 		return
 	}
-	if in.ExpiresHours <= 0 || in.ExpiresHours > 720 { in.ExpiresHours = 168 }
-	if in.MaxUses <= 0 || in.MaxUses > 100 { in.MaxUses = 1 }
+	if in.ExpiresHours <= 0 || in.ExpiresHours > 720 {
+		in.ExpiresHours = 168
+	}
+	if in.MaxUses <= 0 || in.MaxUses > 100 {
+		in.MaxUses = 1
+	}
 	raw, err := randomToken(32)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "could not generate invitation")
@@ -246,13 +251,15 @@ func (a *api) createInvitation(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "could not save invitation")
 		return
 	}
-	baseURL := strings.TrimRight(envOr("FRONTEND_APP_URL", "https://wolcenon.github.io/music-discovery-pwa"), "/")
+	baseURL := strings.TrimRight(envOr("FRONTEND_APP_URL", "https://wolcenon.github.io/BibliotecaEnlaces"), "/")
 	writeJSON(w, http.StatusCreated, map[string]any{"token": raw, "url": baseURL + "/invite.html?token=" + raw, "expiresAt": expires, "maxUses": in.MaxUses})
 }
 
 func (a *api) acceptInvitation(w http.ResponseWriter, r *http.Request) {
 	var in struct{ Email, Password, DisplayName string }
-	if !decodeJSON(w, r, &in) { return }
+	if !decodeJSON(w, r, &in) {
+		return
+	}
 	in.Email = strings.ToLower(strings.TrimSpace(in.Email))
 	in.DisplayName = strings.TrimSpace(in.DisplayName)
 	hashPassword, err := auth.HashPassword(in.Password)
@@ -262,32 +269,59 @@ func (a *api) acceptInvitation(w http.ResponseWriter, r *http.Request) {
 	}
 	tokenHash := sha256.Sum256([]byte(r.PathValue("token")))
 	tx, err := a.db.Begin(r.Context())
-	if err != nil { writeError(w, 500, "could not accept invitation"); return }
+	if err != nil {
+		writeError(w, 500, "could not accept invitation")
+		return
+	}
 	defer tx.Rollback(r.Context())
 	var invitationID, groupID string
 	var uses, maxUses int
 	err = tx.QueryRow(r.Context(), `SELECT id,group_id,uses,max_uses FROM invitations WHERE token_hash=$1 AND status='active' AND expires_at>NOW() FOR UPDATE`, hex.EncodeToString(tokenHash[:])).Scan(&invitationID, &groupID, &uses, &maxUses)
-	if err != nil || uses >= maxUses { writeError(w, http.StatusGone, "invitation is invalid or expired"); return }
+	if err != nil || uses >= maxUses {
+		writeError(w, http.StatusGone, "invitation is invalid or expired")
+		return
+	}
 	var userID string
 	err = tx.QueryRow(r.Context(), `INSERT INTO users(email,password_hash,display_name,status) VALUES($1,$2,$3,'pending') RETURNING id`, in.Email, hashPassword, in.DisplayName).Scan(&userID)
-	if err != nil { writeError(w, http.StatusConflict, "email is already registered"); return }
-	if _, err = tx.Exec(r.Context(), `INSERT INTO group_members(group_id,user_id,role,status) VALUES($1,$2,'member','pending')`, groupID, userID); err != nil { writeError(w, 500, "could not create membership request"); return }
-	if _, err = tx.Exec(r.Context(), `UPDATE invitations SET uses=uses+1,status=CASE WHEN uses+1>=max_uses THEN 'expired' ELSE status END WHERE id=$1`, invitationID); err != nil { writeError(w, 500, "could not update invitation"); return }
-	if err = tx.Commit(r.Context()); err != nil { writeError(w, 500, "could not finish invitation"); return }
+	if err != nil {
+		writeError(w, http.StatusConflict, "email is already registered")
+		return
+	}
+	if _, err = tx.Exec(r.Context(), `INSERT INTO group_members(group_id,user_id,role,status) VALUES($1,$2,'member','pending')`, groupID, userID); err != nil {
+		writeError(w, 500, "could not create membership request")
+		return
+	}
+	if _, err = tx.Exec(r.Context(), `UPDATE invitations SET uses=uses+1,status=CASE WHEN uses+1>=max_uses THEN 'expired' ELSE status END WHERE id=$1`, invitationID); err != nil {
+		writeError(w, 500, "could not update invitation")
+		return
+	}
+	if err = tx.Commit(r.Context()); err != nil {
+		writeError(w, 500, "could not finish invitation")
+		return
+	}
 	writeJSON(w, http.StatusAccepted, map[string]string{"status": "pending_approval"})
 }
 
 func (a *api) membershipRequests(w http.ResponseWriter, r *http.Request) {
 	groupID := r.PathValue("groupID")
 	claims := claimsFrom(r.Context())
-	if !a.isGroupAdmin(r.Context(), groupID, claims.UserID) { writeError(w, 403, "administrator role required"); return }
+	if !a.isGroupAdmin(r.Context(), groupID, claims.UserID) {
+		writeError(w, 403, "administrator role required")
+		return
+	}
 	rows, err := a.db.Query(r.Context(), `SELECT u.id,u.email,u.display_name,gm.created_at FROM group_members gm JOIN users u ON u.id=gm.user_id WHERE gm.group_id=$1 AND gm.status='pending' ORDER BY gm.created_at`, groupID)
-	if err != nil { writeError(w, 500, "could not load requests"); return }
+	if err != nil {
+		writeError(w, 500, "could not load requests")
+		return
+	}
 	defer rows.Close()
 	items := make([]map[string]any, 0)
 	for rows.Next() {
-		var id, email, name string; var created time.Time
-		if rows.Scan(&id,&email,&name,&created)==nil { items=append(items,map[string]any{"id":id,"email":email,"displayName":name,"createdAt":created}) }
+		var id, email, name string
+		var created time.Time
+		if rows.Scan(&id, &email, &name, &created) == nil {
+			items = append(items, map[string]any{"id": id, "email": email, "displayName": name, "createdAt": created})
+		}
 	}
 	writeJSON(w, 200, items)
 }
@@ -295,12 +329,29 @@ func (a *api) membershipRequests(w http.ResponseWriter, r *http.Request) {
 func (a *api) approveMember(w http.ResponseWriter, r *http.Request) {
 	groupID, userID := r.PathValue("groupID"), r.PathValue("userID")
 	claims := claimsFrom(r.Context())
-	if !a.isGroupAdmin(r.Context(), groupID, claims.UserID) { writeError(w, 403, "administrator role required"); return }
-	tx, err := a.db.Begin(r.Context()); if err != nil { writeError(w,500,"could not approve member"); return }; defer tx.Rollback(r.Context())
-	result, err := tx.Exec(r.Context(), `UPDATE group_members SET status='active',joined_at=NOW() WHERE group_id=$1 AND user_id=$2 AND status='pending'`, groupID,userID)
-	if err != nil || result.RowsAffected()!=1 { writeError(w,404,"membership request not found"); return }
-	if _,err=tx.Exec(r.Context(),`UPDATE users SET status='active',updated_at=NOW() WHERE id=$1`,userID);err!=nil { writeError(w,500,"could not activate user"); return }
-	if err=tx.Commit(r.Context());err!=nil { writeError(w,500,"could not finish approval"); return }
+	if !a.isGroupAdmin(r.Context(), groupID, claims.UserID) {
+		writeError(w, 403, "administrator role required")
+		return
+	}
+	tx, err := a.db.Begin(r.Context())
+	if err != nil {
+		writeError(w, 500, "could not approve member")
+		return
+	}
+	defer tx.Rollback(r.Context())
+	result, err := tx.Exec(r.Context(), `UPDATE group_members SET status='active',joined_at=NOW() WHERE group_id=$1 AND user_id=$2 AND status='pending'`, groupID, userID)
+	if err != nil || result.RowsAffected() != 1 {
+		writeError(w, 404, "membership request not found")
+		return
+	}
+	if _, err = tx.Exec(r.Context(), `UPDATE users SET status='active',updated_at=NOW() WHERE id=$1`, userID); err != nil {
+		writeError(w, 500, "could not activate user")
+		return
+	}
+	if err = tx.Commit(r.Context()); err != nil {
+		writeError(w, 500, "could not finish approval")
+		return
+	}
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -311,48 +362,119 @@ func (a *api) isGroupAdmin(ctx context.Context, groupID, userID string) bool {
 }
 
 type contextKey string
+
 const claimsKey contextKey = "claims"
 
 func (a *api) requireAuth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		header := strings.TrimSpace(r.Header.Get("Authorization"))
-		if !strings.HasPrefix(header, "Bearer ") { writeError(w,401,"authentication required"); return }
-		claims, err := auth.ParseToken(a.jwtSecret, strings.TrimSpace(strings.TrimPrefix(header,"Bearer ")))
-		if err != nil { writeError(w,401,"invalid or expired session"); return }
+		if !strings.HasPrefix(header, "Bearer ") {
+			writeError(w, 401, "authentication required")
+			return
+		}
+		claims, err := auth.ParseToken(a.jwtSecret, strings.TrimSpace(strings.TrimPrefix(header, "Bearer ")))
+		if err != nil {
+			writeError(w, 401, "invalid or expired session")
+			return
+		}
 		next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), claimsKey, claims)))
 	})
 }
 
-func claimsFrom(ctx context.Context) auth.Claims { claims, _ := ctx.Value(claimsKey).(auth.Claims); return claims }
-
-func inspectLink(w http.ResponseWriter, r *http.Request) {
-	var payload struct{ URL string `json:"url"` }
-	if !decodeJSON(w,r,&payload) { return }
-	payload.URL=strings.TrimSpace(payload.URL); if payload.URL=="" { writeError(w,400,"url is required"); return }
-	platform,kind:=detectLink(payload.URL); writeJSON(w,200,inspection{Platform:platform,Type:kind,URL:payload.URL})
+func claimsFrom(ctx context.Context) auth.Claims {
+	claims, _ := ctx.Value(claimsKey).(auth.Claims)
+	return claims
 }
 
-func detectLink(raw string) (string,string) {
+func inspectLink(w http.ResponseWriter, r *http.Request) {
+	var payload struct {
+		URL string `json:"url"`
+	}
+	if !decodeJSON(w, r, &payload) {
+		return
+	}
+	payload.URL = strings.TrimSpace(payload.URL)
+	if payload.URL == "" {
+		writeError(w, 400, "url is required")
+		return
+	}
+	platform, kind := detectLink(payload.URL)
+	writeJSON(w, 200, inspection{Platform: platform, Type: kind, URL: payload.URL})
+}
+
+func detectLink(raw string) (string, string) {
 	switch {
-	case strings.Contains(raw,"open.spotify.com/track/"): return "spotify","track"
-	case strings.Contains(raw,"open.spotify.com/playlist/"): return "spotify","playlist"
-	case strings.Contains(raw,"open.spotify.com/album/"): return "spotify","album"
-	case strings.Contains(raw,"youtube.com/playlist"): return "youtube","playlist"
-	case strings.Contains(raw,"youtu.be/"),strings.Contains(raw,"youtube.com/watch"): return "youtube","video"
-	default: return "other","link"
+	case strings.Contains(raw, "open.spotify.com/track/"):
+		return "spotify", "track"
+	case strings.Contains(raw, "open.spotify.com/playlist/"):
+		return "spotify", "playlist"
+	case strings.Contains(raw, "open.spotify.com/album/"):
+		return "spotify", "album"
+	case strings.Contains(raw, "youtube.com/playlist"):
+		return "youtube", "playlist"
+	case strings.Contains(raw, "youtu.be/"), strings.Contains(raw, "youtube.com/watch"):
+		return "youtube", "video"
+	default:
+		return "other", "link"
 	}
 }
 
-func decodeJSON(w http.ResponseWriter,r *http.Request,dst any) bool {
-	decoder:=json.NewDecoder(http.MaxBytesReader(w,r.Body,1<<20)); decoder.DisallowUnknownFields()
-	if err:=decoder.Decode(dst);err!=nil { writeError(w,400,"invalid JSON body"); return false }; return true
+func decodeJSON(w http.ResponseWriter, r *http.Request, dst any) bool {
+	decoder := json.NewDecoder(http.MaxBytesReader(w, r.Body, 1<<20))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(dst); err != nil {
+		writeError(w, 400, "invalid JSON body")
+		return false
+	}
+	return true
 }
-func randomToken(size int)(string,error){ b:=make([]byte,size);if _,err:=rand.Read(b);err!=nil{return "",err};return hex.EncodeToString(b),nil }
-func subtleToken(value string) string { sum:=sha256.Sum256([]byte(value)); return hex.EncodeToString(sum[:]) }
-func envOr(key,fallback string)string{if value:=os.Getenv(key);value!=""{return value};return fallback}
-func cors(next http.Handler) http.Handler { return http.HandlerFunc(func(w http.ResponseWriter,r *http.Request){ origin:=envOr("FRONTEND_ORIGIN","http://localhost:8000");w.Header().Set("Access-Control-Allow-Origin",origin);w.Header().Set("Access-Control-Allow-Headers","Content-Type, Authorization");w.Header().Set("Access-Control-Allow-Methods","GET, POST, PUT, PATCH, DELETE, OPTIONS");w.Header().Set("Vary","Origin");if r.Method==http.MethodOptions{w.WriteHeader(204);return};next.ServeHTTP(w,r) }) }
-func writeError(w http.ResponseWriter,status int,message string){writeJSON(w,status,map[string]string{"error":message})}
-func writeJSON(w http.ResponseWriter,status int,value any){w.Header().Set("Content-Type","application/json");w.WriteHeader(status);if err:=json.NewEncoder(w).Encode(value);err!=nil{log.Printf("encode response failed: %v",err)}}
+
+func randomToken(size int) (string, error) {
+	b := make([]byte, size)
+	if _, err := rand.Read(b); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(b), nil
+}
+
+func subtleToken(value string) string {
+	sum := sha256.Sum256([]byte(value))
+	return hex.EncodeToString(sum[:])
+}
+
+func envOr(key, fallback string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	return fallback
+}
+
+func cors(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		origin := envOr("FRONTEND_ORIGIN", "http://localhost:8000")
+		w.Header().Set("Access-Control-Allow-Origin", origin)
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
+		w.Header().Set("Vary", "Origin")
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(204)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+func writeError(w http.ResponseWriter, status int, message string) {
+	writeJSON(w, status, map[string]string{"error": message})
+}
+
+func writeJSON(w http.ResponseWriter, status int, value any) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	if err := json.NewEncoder(w).Encode(value); err != nil {
+		log.Printf("encode response failed: %v", err)
+	}
+}
 
 var _ = fmt.Sprintf
 var _ = pgx.ErrNoRows
