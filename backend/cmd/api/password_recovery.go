@@ -5,7 +5,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/WolcenOn/music-discovery-pwa/backend/internal/auth"
+	"github.com/WolcenOn/BibliotecaEnlaces/backend/internal/auth"
 )
 
 func (a *api) registerPasswordRecoveryRoutes(mux *http.ServeMux) {
