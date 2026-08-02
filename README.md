@@ -44,7 +44,19 @@ Los tipos de campo previstos son:
 - `date`
 - `boolean`
 
-La primera interfaz se centrará en selección única y selección múltiple.
+La primera interfaz se centra en selección única y selección múltiple.
+
+## Inspección de enlaces
+
+El endpoint autenticado `POST /api/v1/resources/inspect` obtiene, cuando están disponibles:
+
+- URL final después de redirecciones.
+- Tipo MIME y tipo técnico del recurso.
+- Proveedor reconocido.
+- Título y descripción desde Open Graph, Twitter Cards o `<title>`.
+- Miniatura pública, incluyendo miniaturas directas de YouTube.
+
+La inspección aplica límites de tiempo y tamaño, limita las redirecciones y rechaza direcciones locales, privadas o de enlace local para reducir riesgos SSRF. Cuando un sitio no permite la consulta, el formulario sigue admitiendo completar los datos manualmente.
 
 ## Importación desde WhatsApp
 
@@ -77,9 +89,7 @@ FRONTEND_APP_URL=
 
 ## Hoja de ruta inmediata
 
-1. Generalizar la interfaz y la API de canciones a recursos.
-2. Ampliar la inspección de enlaces para PDF, imágenes, vídeos, documentos y páginas web.
-3. Crear la administración de campos personalizados.
-4. Generar formularios y filtros dinámicos.
-5. Añadir la pantalla de importación y revisión masiva de WhatsApp.
-6. Configurar backend y PostgreSQL en Railway.
+1. Completar filtros dinámicos por campos personalizados.
+2. Añadir edición y eliminación de recursos genéricos.
+3. Añadir la pantalla de importación y revisión masiva de WhatsApp.
+4. Configurar backend y PostgreSQL en Railway.
