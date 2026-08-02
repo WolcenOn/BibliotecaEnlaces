@@ -1,4 +1,4 @@
-module github.com/WolcenOn/music-discovery-pwa/backend
+module github.com/WolcenOn/BibliotecaEnlaces/backend
 
 go 1.24
 
