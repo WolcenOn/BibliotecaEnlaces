@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#09090b">
+  <title>Clasificación · Biblioteca de Enlaces</title>
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="stylesheet" href="./css/main.css">
+  <link rel="stylesheet" href="./css/library-layout.css">
+  <link rel="stylesheet" href="./css/auth-gate.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand"><div class="brand-mark">⌁</div><div><p class="eyebrow">Configuración</p><h1>Campos de clasificación</h1></div></div>
+  <nav><a class="button button-secondary" href="./library.html">Volver a la biblioteca</a></nav>
+</header>
+<main>
+  <section class="panel panel-body">
+    <div class="section-heading"><div><p class="eyebrow">Biblioteca activa</p><h2>Clasificación personalizada</h2><p>Crea los campos que aparecerán al guardar y filtrar recursos.</p></div></div>
+    <label class="field">Biblioteca<select id="groupSelect"></select></label>
+  </section>
+
+  <section class="panel panel-body">
+    <div class="section-heading"><div><p class="eyebrow">Nuevo campo</p><h2>Añadir criterio</h2></div></div>
+    <form id="fieldForm" class="panel-form">
+      <div class="form-grid">
+        <label class="field">Nombre<input id="fieldName" required placeholder="Ej. Módulo, Área o Etapa"></label>
+        <label class="field">Tipo<select id="fieldType"><option value="single_select">Selección única</option><option value="multi_select">Selección múltiple</option></select></label>
+        <label class="field field-wide">Opciones<textarea id="fieldOptions" rows="4" placeholder="Una opción por línea"></textarea></label>
+        <label class="field"><span><input id="fieldRequired" type="checkbox"> Obligatorio al guardar</span></label>
+        <label class="field"><span><input id="fieldFilterable" type="checkbox" checked> Disponible como filtro</span></label>
+      </div>
+      <div class="form-actions"><button class="button" type="submit">Crear campo</button><p id="fieldMessage" class="form-message"></p></div>
+    </form>
+  </section>
+
+  <section class="panel panel-body">
+    <div class="section-heading"><div><p class="eyebrow">Campos actuales</p><h2>Estructura de la biblioteca</h2></div></div>
+    <div id="fieldsList" class="recent-list"></div>
+  </section>
+</main>
+
+<dialog id="loginDialog" class="login-dialog"><form id="inlineLoginForm" class="login-card"><p class="eyebrow">Acceso privado</p><h2>Iniciar sesión</h2><p class="muted">Introduce tus datos para continuar.</p><label>Correo<input id="inlineEmail" type="email" autocomplete="username" required></label><label>Contraseña<input id="inlinePassword" type="password" autocomplete="current-password" required></label><p id="inlineLoginMessage" class="form-message"></p><button class="button" type="submit">Entrar</button></form></dialog>
+<script src="./js/config.js"></script>
+<script type="module" src="./js/auth-gate.js"></script>
+<script type="module" src="./js/fields.js"></script>
+</body>
+</html>
