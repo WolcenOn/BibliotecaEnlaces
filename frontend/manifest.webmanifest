@@ -1,7 +1,7 @@
 {
-  "name": "Music Discovery",
-  "short_name": "Discovery",
-  "description": "Biblioteca musical colaborativa para grupos.",
+  "name": "Biblioteca de Enlaces",
+  "short_name": "Biblioteca",
+  "description": "Biblioteca colaborativa para guardar, clasificar y recuperar recursos compartidos.",
   "start_url": "./library.html",
   "scope": "./",
   "display": "standalone",
