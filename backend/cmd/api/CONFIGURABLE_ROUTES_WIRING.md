@@ -1,11 +1,9 @@
-# Conexión de rutas configurables
+# Rutas configurables
 
-Los handlers están implementados en `configurable_resources.go`.
-
-Para activarlos, añade esta llamada al final de `registerRoutes` en `main.go`:
+Las rutas configurables ya están registradas desde `registerRoutes` en `main.go` mediante:
 
 ```go
 a.registerConfigurableRoutes(mux)
 ```
 
-Debe quedar antes del cierre de la función. Este paso se mantiene separado para facilitar la revisión del archivo principal, que todavía contiene la API musical heredada.
+Este archivo se mantiene como referencia de la integración realizada.
