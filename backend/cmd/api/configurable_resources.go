@@ -45,6 +45,7 @@ type resourceInput struct {
 }
 
 func (a *api) registerConfigurableRoutes(mux *http.ServeMux) {
+	mux.Handle("POST /api/v1/resources/inspect", a.requireAuth(http.HandlerFunc(inspectResourceMetadata)))
 	mux.Handle("GET /api/v1/groups/{groupID}/fields", a.requireAuth(http.HandlerFunc(a.listCustomFields)))
 	mux.Handle("POST /api/v1/groups/{groupID}/fields", a.requireAuth(http.HandlerFunc(a.createCustomField)))
 	mux.Handle("POST /api/v1/groups/{groupID}/fields/{fieldID}/options", a.requireAuth(http.HandlerFunc(a.createCustomFieldOption)))
