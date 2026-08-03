@@ -1,4 +1,4 @@
-const CACHE_NAME = 'biblioteca-enlaces-v15';
+const CACHE_NAME = 'biblioteca-enlaces-v16';
 const APP_SHELL = [
   './',
   './index.html',
@@ -23,6 +23,7 @@ const APP_SHELL = [
   './js/dashboard-fallback.js',
   './js/resources.js',
   './js/dashboard-cards.js',
+  './js/bulk-actions.js?v=1',
   './js/library-transfer.js?v=3',
   './js/fields.js',
   './js/admin.js',
