@@ -1,4 +1,4 @@
-const CACHE_NAME = 'biblioteca-enlaces-v1';
+const CACHE_NAME = 'biblioteca-enlaces-v2';
 const APP_SHELL = [
   './',
   './index.html',
@@ -19,7 +19,6 @@ const APP_SHELL = [
   './js/invite.js',
   './js/resources.js',
   './js/fields.js',
-  './js/library.js',
   './js/admin.js',
   './js/auth-gate.js',
   './js/share-entry.js',
