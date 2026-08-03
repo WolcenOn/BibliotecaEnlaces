@@ -98,7 +98,7 @@ func (a *api) updateManagedMember(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer tx.Rollback(r.Context())
-	if _, err := tx.Exec(r.Context(), `UPDATE users SET display_name=$2,updated_at=NOW() WHERE id=$1`, userID, in.DisplayName); err != nil {
+	if _, err := tx.Exec(r.Context(), `UPDATE users SET display_name=$2 WHERE id=$1`, userID, in.DisplayName); err != nil {
 		writeError(w, http.StatusInternalServerError, "could not update member profile")
 		return
 	}
