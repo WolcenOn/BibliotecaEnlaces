@@ -71,34 +71,24 @@ function enhanceRanking() {
   container.dataset.enhanced = 'true';
 }
 
-function resetEnhancementFlags() {
+function enhanceDashboardCards() {
   document.querySelector('#recentList')?.removeAttribute('data-enhanced');
   document.querySelector('#rankingList')?.removeAttribute('data-enhanced');
-}
-
-const observer = new MutationObserver(() => {
-  resetEnhancementFlags();
-  queueMicrotask(() => {
-    enhanceRecent();
-    enhanceRanking();
-  });
-});
-
-const resourceList = document.querySelector('#resourceList');
-const recentList = document.querySelector('#recentList');
-const rankingList = document.querySelector('#rankingList');
-if (resourceList) observer.observe(resourceList, { childList: true, subtree: true });
-if (recentList) observer.observe(recentList, { childList: true, subtree: true });
-if (rankingList) observer.observe(rankingList, { childList: true, subtree: true });
-
-window.addEventListener('load', () => {
   enhanceRecent();
   enhanceRanking();
-});
+}
+
+const resourceList = document.querySelector('#resourceList');
+if (resourceList) {
+  new MutationObserver(() => queueMicrotask(enhanceDashboardCards))
+    .observe(resourceList, { childList: true, subtree: true });
+}
+
+window.addEventListener('load', enhanceDashboardCards);
 
 window.addEventListener('unhandledrejection', event => {
   const message = String(event.reason?.message || '');
-  if (message.includes('Error HTTP 404') && message.includes('rating')) {
+  if (message.includes('Error HTTP 404')) {
     event.preventDefault();
     alert('La valoración aún no está activa en Railway. El backend debe desplegar las rutas sociales.');
   }
