@@ -1,4 +1,5 @@
-const TOKEN_KEY = "musicDiscoveryToken";
+const TOKEN_KEY = "bibliotecaEnlacesToken";
+const LEGACY_TOKEN_KEYS = ["musicDiscoveryToken"];
 
 export function getApiUrl() {
   return String(window.APP_CONFIG?.apiUrl || "").trim().replace(/\/$/, "");
@@ -9,21 +10,29 @@ export function setApiUrl() {
 }
 
 export function getToken() {
-  const current = sessionStorage.getItem(TOKEN_KEY);
+  const current = localStorage.getItem(TOKEN_KEY);
   if (current) return current;
 
-  // Migración puntual: elimina tokens persistentes creados por versiones anteriores.
-  const legacy = localStorage.getItem(TOKEN_KEY) || "";
-  if (legacy) {
-    sessionStorage.setItem(TOKEN_KEY, legacy);
-    localStorage.removeItem(TOKEN_KEY);
+  // Recupera sesiones creadas por versiones anteriores y elimina las claves antiguas.
+  for (const key of LEGACY_TOKEN_KEYS) {
+    const legacy = localStorage.getItem(key) || sessionStorage.getItem(key) || "";
+    localStorage.removeItem(key);
+    sessionStorage.removeItem(key);
+    if (legacy) {
+      localStorage.setItem(TOKEN_KEY, legacy);
+      return legacy;
+    }
   }
-  return legacy;
+  return "";
 }
 
 export function setToken(value) {
-  localStorage.removeItem(TOKEN_KEY);
-  value ? sessionStorage.setItem(TOKEN_KEY, value) : sessionStorage.removeItem(TOKEN_KEY);
+  for (const key of LEGACY_TOKEN_KEYS) {
+    localStorage.removeItem(key);
+    sessionStorage.removeItem(key);
+  }
+  sessionStorage.removeItem(TOKEN_KEY);
+  value ? localStorage.setItem(TOKEN_KEY, value) : localStorage.removeItem(TOKEN_KEY);
 }
 
 export async function api(path, options = {}) {
@@ -33,7 +42,14 @@ export async function api(path, options = {}) {
   if (options.body && !headers.has("Content-Type")) headers.set("Content-Type", "application/json");
   const token = getToken();
   if (token) headers.set("Authorization", `Bearer ${token}`);
-  const response = await fetch(`${base}${path}`, { ...options, headers });
+
+  let response;
+  try {
+    response = await fetch(`${base}${path}`, { ...options, headers });
+  } catch {
+    throw new Error("No se pudo conectar con la API. Comprueba que Railway esté activo y recarga la aplicación.");
+  }
+
   const data = response.status === 204 ? null : await response.json().catch(() => null);
   if (!response.ok) throw new Error(data?.error || `Error HTTP ${response.status}`);
   return data;
