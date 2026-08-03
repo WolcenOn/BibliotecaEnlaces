@@ -1,14 +1,14 @@
 {
   "name": "Biblioteca de Enlaces",
   "short_name": "Biblioteca",
-  "description": "Biblioteca colaborativa para guardar, clasificar y recuperar recursos compartidos.",
-  "start_url": "./library.html",
+  "description": "Biblioteca colaborativa y configurable de recursos compartidos.",
+  "start_url": "./resources.html",
   "scope": "./",
   "display": "standalone",
   "background_color": "#09090b",
   "theme_color": "#09090b",
   "share_target": {
-    "action": "./library.html",
+    "action": "./resources.html",
     "method": "GET",
     "params": {
       "title": "title",

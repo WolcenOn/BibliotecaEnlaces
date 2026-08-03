@@ -31,129 +31,391 @@ func (a *api) isGroupMember(r *http.Request, groupID string) bool {
 
 func (a *api) listGenres(w http.ResponseWriter, r *http.Request) {
 	rows, err := a.db.Query(r.Context(), `SELECT id,name FROM genres ORDER BY name`)
-	if err != nil { writeError(w, 500, "could not load genres"); return }
+	if err != nil {
+		writeError(w, 500, "could not load genres")
+		return
+	}
 	defer rows.Close()
 	items := make([]map[string]string, 0)
-	for rows.Next() { var id, name string; if rows.Scan(&id, &name) == nil { items = append(items, map[string]string{"id": id, "name": name}) } }
+	for rows.Next() {
+		var id, name string
+		if rows.Scan(&id, &name) == nil {
+			items = append(items, map[string]string{"id": id, "name": name})
+		}
+	}
 	writeJSON(w, 200, items)
 }
 
 func (a *api) listGroupMembers(w http.ResponseWriter, r *http.Request) {
 	groupID := r.PathValue("groupID")
-	if !a.isGroupMember(r, groupID) { writeError(w, 403, "active group membership required"); return }
+	if !a.isGroupMember(r, groupID) {
+		writeError(w, 403, "active group membership required")
+		return
+	}
 	rows, err := a.db.Query(r.Context(), `SELECT u.id,u.display_name FROM group_members gm JOIN users u ON u.id=gm.user_id WHERE gm.group_id=$1 AND gm.status='active' ORDER BY lower(u.display_name)`, groupID)
-	if err != nil { writeError(w, 500, "could not load group members"); return }
+	if err != nil {
+		writeError(w, 500, "could not load group members")
+		return
+	}
 	defer rows.Close()
 	items := make([]map[string]string, 0)
-	for rows.Next() { var id, name string; if rows.Scan(&id, &name) == nil { items = append(items, map[string]string{"id": id, "displayName": name}) } }
+	for rows.Next() {
+		var id, name string
+		if rows.Scan(&id, &name) == nil {
+			items = append(items, map[string]string{"id": id, "displayName": name})
+		}
+	}
 	writeJSON(w, 200, items)
 }
 
 func (a *api) genreID(r *http.Request, genre string) (any, error) {
 	genre = strings.TrimSpace(genre)
-	if genre == "" { return nil, nil }
+	if genre == "" {
+		return nil, nil
+	}
 	var id string
 	err := a.db.QueryRow(r.Context(), `SELECT id FROM genres WHERE lower(name)=lower($1)`, genre).Scan(&id)
-	if err != nil { return nil, err }
+	if err != nil {
+		return nil, err
+	}
 	return id, nil
 }
 
 func (a *api) addMusic(w http.ResponseWriter, r *http.Request) {
 	groupID := r.PathValue("groupID")
-	if !a.isGroupMember(r, groupID) { writeError(w, 403, "active group membership required"); return }
-	var in struct { URL string `json:"url"`; Title string `json:"title"`; Artist string `json:"artist"`; Genre string `json:"genre"`; Comment string `json:"comment"`; ImageURL string `json:"imageUrl"` }
-	if !decodeJSON(w, r, &in) { return }
+	if !a.isGroupMember(r, groupID) {
+		writeError(w, 403, "active group membership required")
+		return
+	}
+	var in struct {
+		URL      string `json:"url"`
+		Title    string `json:"title"`
+		Artist   string `json:"artist"`
+		Genre    string `json:"genre"`
+		Comment  string `json:"comment"`
+		ImageURL string `json:"imageUrl"`
+	}
+	if !decodeJSON(w, r, &in) {
+		return
+	}
 	in.URL, in.Title, in.Artist, in.Genre, in.Comment, in.ImageURL = strings.TrimSpace(in.URL), strings.TrimSpace(in.Title), strings.TrimSpace(in.Artist), strings.TrimSpace(in.Genre), strings.TrimSpace(in.Comment), strings.TrimSpace(in.ImageURL)
 	metadata, err := resolveMusicMetadata(r.Context(), in.URL)
-	if err != nil { writeError(w, 400, err.Error()); return }
+	if err != nil {
+		writeError(w, 400, err.Error())
+		return
+	}
 	in.URL = metadata.URL
-	if in.Title == "" { in.Title = metadata.Title }; if in.Artist == "" { in.Artist = metadata.Artist }; if in.ImageURL == "" { in.ImageURL = metadata.ImageURL }
-	if in.Title == "" { writeError(w, 400, "title is required when metadata is unavailable"); return }
-	genreID, err := a.genreID(r, in.Genre); if in.Genre != "" && err != nil { writeError(w, 400, "select a valid genre"); return }
-	parsed, _ := url.Parse(in.URL); platform, kind, externalID := metadata.Platform, metadata.Type, metadata.ExternalID; if externalID == "" { externalID = externalIDFromURL(parsed, platform, kind) }
-	if id, title := a.findDuplicate(r, groupID, "", externalID, platform, kind, in.Title, in.Artist); id != "" { writeJSON(w, 409, map[string]string{"error":"Esta canción ya existe en el grupo.","duplicateId":id,"duplicateTitle":title}); return }
-	tx, err := a.db.Begin(r.Context()); if err != nil { writeError(w, 500, "could not add music"); return }; defer tx.Rollback(r.Context())
+	if in.Title == "" {
+		in.Title = metadata.Title
+	}
+	if in.Artist == "" {
+		in.Artist = metadata.Artist
+	}
+	if in.ImageURL == "" {
+		in.ImageURL = metadata.ImageURL
+	}
+	if in.Title == "" {
+		writeError(w, 400, "title is required when metadata is unavailable")
+		return
+	}
+	genreID, err := a.genreID(r, in.Genre)
+	if in.Genre != "" && err != nil {
+		writeError(w, 400, "select a valid genre")
+		return
+	}
+	parsed, _ := url.Parse(in.URL)
+	platform, kind, externalID := metadata.Platform, metadata.Type, metadata.ExternalID
+	if externalID == "" {
+		externalID = externalIDFromURL(parsed, platform, kind)
+	}
+	if id, title := a.findDuplicate(r, groupID, "", externalID, platform, kind, in.Title, in.Artist); id != "" {
+		writeJSON(w, 409, map[string]string{"error": "Esta canción ya existe en el grupo.", "duplicateId": id, "duplicateTitle": title})
+		return
+	}
+	tx, err := a.db.Begin(r.Context())
+	if err != nil {
+		writeError(w, 500, "could not add music")
+		return
+	}
+	defer tx.Rollback(r.Context())
 	var musicID string
 	if externalID != "" {
 		err = tx.QueryRow(r.Context(), `INSERT INTO music_items(platform,content_type,external_id,canonical_url,title,artist,image_url) VALUES($1,$2,$3,$4,$5,NULLIF($6,''),NULLIF($7,'')) ON CONFLICT(platform,content_type,external_id) DO UPDATE SET canonical_url=EXCLUDED.canonical_url,title=COALESCE(NULLIF(EXCLUDED.title,''),music_items.title),artist=COALESCE(NULLIF(EXCLUDED.artist,''),music_items.artist),image_url=COALESCE(NULLIF(EXCLUDED.image_url,''),music_items.image_url),updated_at=NOW() RETURNING id`, platform, kind, externalID, in.URL, in.Title, in.Artist, in.ImageURL).Scan(&musicID)
 	} else {
 		err = tx.QueryRow(r.Context(), `INSERT INTO music_items(platform,content_type,canonical_url,title,artist,image_url) VALUES($1,$2,$3,$4,NULLIF($5,''),NULLIF($6,'')) RETURNING id`, platform, kind, in.URL, in.Title, in.Artist, in.ImageURL).Scan(&musicID)
 	}
-	if err != nil { writeError(w, 500, "could not save music item"); return }
+	if err != nil {
+		writeError(w, 500, "could not save music item")
+		return
+	}
 	var itemID string
 	err = tx.QueryRow(r.Context(), `INSERT INTO group_music_items(group_id,music_item_id,added_by,genre_id,initial_comment) VALUES($1,$2,$3,$4,NULLIF($5,'')) RETURNING id`, groupID, musicID, claimsFrom(r.Context()).UserID, genreID, in.Comment).Scan(&itemID)
-	if err != nil { writeError(w, 409, "Esta canción ya existe en el grupo."); return }
-	if tx.Commit(r.Context()) != nil { writeError(w, 500, "could not finish music item"); return }
+	if err != nil {
+		writeError(w, 409, "Esta canción ya existe en el grupo.")
+		return
+	}
+	if tx.Commit(r.Context()) != nil {
+		writeError(w, 500, "could not finish music item")
+		return
+	}
 	writeJSON(w, 201, map[string]string{"id": itemID})
 }
 
 func (a *api) findDuplicate(r *http.Request, groupID, excludeID, externalID, platform, kind, title, artist string) (string, string) {
-	var id, name string; nt, na := normalizeIdentity(title), normalizeIdentity(artist)
+	var id, name string
+	nt, na := normalizeIdentity(title), normalizeIdentity(artist)
 	q := `SELECT gmi.id,mi.title FROM group_music_items gmi JOIN music_items mi ON mi.id=gmi.music_item_id WHERE gmi.group_id=$1 AND ($2='' OR gmi.id<>$2) AND ((NULLIF($3,'') IS NOT NULL AND mi.platform=$4 AND mi.content_type=$5 AND mi.external_id=$3) OR ($6<>'' AND lower(regexp_replace(mi.title,'[^[:alnum:]]','','g'))=$6 AND ($7='' OR lower(regexp_replace(COALESCE(mi.artist,''),'[^[:alnum:]]','','g'))=$7))) LIMIT 1`
-	if a.db.QueryRow(r.Context(), q, groupID, excludeID, externalID, platform, kind, nt, na).Scan(&id, &name) == nil { return id, name }
+	if a.db.QueryRow(r.Context(), q, groupID, excludeID, externalID, platform, kind, nt, na).Scan(&id, &name) == nil {
+		return id, name
+	}
 	return "", ""
 }
 
 func (a *api) updateMusic(w http.ResponseWriter, r *http.Request) {
 	itemID, userID := r.PathValue("itemID"), claimsFrom(r.Context()).UserID
-	var in struct { Title string `json:"title"`; Artist string `json:"artist"`; Genre string `json:"genre"`; Comment string `json:"comment"`; ImageURL string `json:"imageUrl"` }
-	if !decodeJSON(w, r, &in) { return }
+	var in struct {
+		Title    string `json:"title"`
+		Artist   string `json:"artist"`
+		Genre    string `json:"genre"`
+		Comment  string `json:"comment"`
+		ImageURL string `json:"imageUrl"`
+	}
+	if !decodeJSON(w, r, &in) {
+		return
+	}
 	in.Title, in.Artist, in.Genre, in.Comment, in.ImageURL = strings.TrimSpace(in.Title), strings.TrimSpace(in.Artist), strings.TrimSpace(in.Genre), strings.TrimSpace(in.Comment), strings.TrimSpace(in.ImageURL)
-	if in.Title == "" { writeError(w, 400, "title is required"); return }
+	if in.Title == "" {
+		writeError(w, 400, "title is required")
+		return
+	}
 	var groupID, musicID, externalID, platform, kind string
 	err := a.db.QueryRow(r.Context(), `SELECT gmi.group_id,gmi.music_item_id,COALESCE(mi.external_id,''),mi.platform,mi.content_type FROM group_music_items gmi JOIN music_items mi ON mi.id=gmi.music_item_id JOIN group_members gm ON gm.group_id=gmi.group_id AND gm.user_id=$2 AND gm.status='active' WHERE gmi.id=$1 AND (gmi.added_by=$2 OR gm.role IN ('owner','admin'))`, itemID, userID).Scan(&groupID, &musicID, &externalID, &platform, &kind)
-	if err != nil { writeError(w, 403, "only the contributor or an administrator can edit this item"); return }
-	if id, _ := a.findDuplicate(r, groupID, itemID, externalID, platform, kind, in.Title, in.Artist); id != "" { writeError(w, 409, "another song with the same title and artist already exists"); return }
-	genreID, err := a.genreID(r, in.Genre); if in.Genre != "" && err != nil { writeError(w, 400, "select a valid genre"); return }
-	tx, err := a.db.Begin(r.Context()); if err != nil { writeError(w, 500, "could not edit music item"); return }; defer tx.Rollback(r.Context())
-	if _, err = tx.Exec(r.Context(), `UPDATE music_items SET title=$2,artist=NULLIF($3,''),image_url=NULLIF($4,''),updated_at=NOW() WHERE id=$1`, musicID, in.Title, in.Artist, in.ImageURL); err != nil { writeError(w, 500, "could not update music data"); return }
-	if _, err = tx.Exec(r.Context(), `UPDATE group_music_items SET genre_id=$2,initial_comment=NULLIF($3,'') WHERE id=$1`, itemID, genreID, in.Comment); err != nil { writeError(w, 500, "could not update group data"); return }
-	if tx.Commit(r.Context()) != nil { writeError(w, 500, "could not finish edit"); return }
+	if err != nil {
+		writeError(w, 403, "only the contributor or an administrator can edit this item")
+		return
+	}
+	if id, _ := a.findDuplicate(r, groupID, itemID, externalID, platform, kind, in.Title, in.Artist); id != "" {
+		writeError(w, 409, "another song with the same title and artist already exists")
+		return
+	}
+	genreID, err := a.genreID(r, in.Genre)
+	if in.Genre != "" && err != nil {
+		writeError(w, 400, "select a valid genre")
+		return
+	}
+	tx, err := a.db.Begin(r.Context())
+	if err != nil {
+		writeError(w, 500, "could not edit music item")
+		return
+	}
+	defer tx.Rollback(r.Context())
+	if _, err = tx.Exec(r.Context(), `UPDATE music_items SET title=$2,artist=NULLIF($3,''),image_url=NULLIF($4,''),updated_at=NOW() WHERE id=$1`, musicID, in.Title, in.Artist, in.ImageURL); err != nil {
+		writeError(w, 500, "could not update music data")
+		return
+	}
+	if _, err = tx.Exec(r.Context(), `UPDATE group_music_items SET genre_id=$2,initial_comment=NULLIF($3,'') WHERE id=$1`, itemID, genreID, in.Comment); err != nil {
+		writeError(w, 500, "could not update group data")
+		return
+	}
+	if tx.Commit(r.Context()) != nil {
+		writeError(w, 500, "could not finish edit")
+		return
+	}
 	w.WriteHeader(204)
 }
 
 func (a *api) deleteMusic(w http.ResponseWriter, r *http.Request) {
 	itemID, userID := r.PathValue("itemID"), claimsFrom(r.Context()).UserID
-	tx, err := a.db.Begin(r.Context()); if err != nil { writeError(w, 500, "could not delete music item"); return }; defer tx.Rollback(r.Context())
+	tx, err := a.db.Begin(r.Context())
+	if err != nil {
+		writeError(w, 500, "could not delete music item")
+		return
+	}
+	defer tx.Rollback(r.Context())
 	var musicID string
 	err = tx.QueryRow(r.Context(), `DELETE FROM group_music_items gmi USING group_members gm WHERE gmi.id=$1 AND gm.group_id=gmi.group_id AND gm.user_id=$2 AND gm.status='active' AND (gmi.added_by=$2 OR gm.role IN ('owner','admin')) RETURNING gmi.music_item_id`, itemID, userID).Scan(&musicID)
-	if err != nil { writeError(w, 403, "only the contributor or an administrator can delete this item"); return }
+	if err != nil {
+		writeError(w, 403, "only the contributor or an administrator can delete this item")
+		return
+	}
 	_, _ = tx.Exec(r.Context(), `DELETE FROM music_items mi WHERE mi.id=$1 AND NOT EXISTS(SELECT 1 FROM group_music_items WHERE music_item_id=mi.id)`, musicID)
-	if tx.Commit(r.Context()) != nil { writeError(w, 500, "could not finish deletion"); return }
+	if tx.Commit(r.Context()) != nil {
+		writeError(w, 500, "could not finish deletion")
+		return
+	}
 	w.WriteHeader(204)
 }
 
 func (a *api) listMusic(w http.ResponseWriter, r *http.Request) {
 	groupID := r.PathValue("groupID")
-	if !a.isGroupMember(r, groupID) { writeError(w, 403, "active group membership required"); return }
+	if !a.isGroupMember(r, groupID) {
+		writeError(w, 403, "active group membership required")
+		return
+	}
 	q, platform, kind, genre, addedBy := strings.TrimSpace(r.URL.Query().Get("q")), strings.TrimSpace(r.URL.Query().Get("platform")), strings.TrimSpace(r.URL.Query().Get("type")), strings.TrimSpace(r.URL.Query().Get("genre")), strings.TrimSpace(r.URL.Query().Get("addedBy"))
 	userID := claimsFrom(r.Context()).UserID
 	rows, err := a.db.Query(r.Context(), `SELECT gmi.id,mi.title,COALESCE(mi.artist,''),mi.canonical_url,mi.platform,mi.content_type,COALESCE(ge.name,''),u.id,u.display_name,gmi.added_at,COALESCE(AVG(ra.value),0),COUNT(DISTINCT ra.id),COUNT(DISTINCT co.id),COALESCE(mi.image_url,''),COALESCE(gmi.initial_comment,''),(gmi.added_by=$7 OR EXISTS(SELECT 1 FROM group_members gx WHERE gx.group_id=gmi.group_id AND gx.user_id=$7 AND gx.status='active' AND gx.role IN ('owner','admin'))) FROM group_music_items gmi JOIN music_items mi ON mi.id=gmi.music_item_id JOIN users u ON u.id=gmi.added_by LEFT JOIN genres ge ON ge.id=gmi.genre_id LEFT JOIN ratings ra ON ra.group_music_item_id=gmi.id LEFT JOIN comments co ON co.group_music_item_id=gmi.id AND co.deleted_at IS NULL WHERE gmi.group_id=$1 AND ($2='' OR mi.platform=$2) AND ($3='' OR mi.content_type=$3) AND ($4='' OR lower(ge.name)=lower($4)) AND ($5='' OR mi.title ILIKE '%'||$5||'%' OR COALESCE(mi.artist,'') ILIKE '%'||$5||'%') AND ($6='' OR gmi.added_by::text=$6) GROUP BY gmi.id,mi.id,ge.name,u.id,u.display_name ORDER BY gmi.added_at DESC LIMIT 200`, groupID, platform, kind, genre, q, addedBy, userID)
-	if err != nil { writeError(w, 500, "could not load music library"); return }
-	defer rows.Close(); items := make([]map[string]any, 0)
+	if err != nil {
+		writeError(w, 500, "could not load music library")
+		return
+	}
+	defer rows.Close()
+	items := make([]map[string]any, 0)
 	for rows.Next() {
-		var id, title, artist, link, p, k, g, addedByID, addedByName, imageURL, comment string; var addedAt time.Time; var average float64; var votes, comments int64; var canEdit bool
-		if rows.Scan(&id,&title,&artist,&link,&p,&k,&g,&addedByID,&addedByName,&addedAt,&average,&votes,&comments,&imageURL,&comment,&canEdit)==nil { items=append(items,map[string]any{"id":id,"title":title,"artist":artist,"url":link,"platform":p,"type":k,"genre":g,"addedById":addedByID,"addedBy":addedByName,"addedAt":addedAt,"rating":average,"votes":votes,"comments":comments,"imageUrl":imageURL,"comment":comment,"canEdit":canEdit}) }
+		var id, title, artist, link, p, k, g, addedByID, addedByName, imageURL, comment string
+		var addedAt time.Time
+		var average float64
+		var votes, comments int64
+		var canEdit bool
+		if rows.Scan(&id, &title, &artist, &link, &p, &k, &g, &addedByID, &addedByName, &addedAt, &average, &votes, &comments, &imageURL, &comment, &canEdit) == nil {
+			items = append(items, map[string]any{"id": id, "title": title, "artist": artist, "url": link, "platform": p, "type": k, "genre": g, "addedById": addedByID, "addedBy": addedByName, "addedAt": addedAt, "rating": average, "votes": votes, "comments": comments, "imageUrl": imageURL, "comment": comment, "canEdit": canEdit})
+		}
 	}
 	writeJSON(w, 200, items)
 }
 
 func (a *api) rankings(w http.ResponseWriter, r *http.Request) {
 	groupID := r.PathValue("groupID")
-	if !a.isGroupMember(r, groupID) { writeError(w, 403, "active group membership required"); return }
-	period := r.URL.Query().Get("period"); if period != "year" { period = "month" }
-	interval := "month"; if period == "year" { interval = "year" }
+	if !a.isGroupMember(r, groupID) {
+		writeError(w, 403, "active group membership required")
+		return
+	}
+	period := r.URL.Query().Get("period")
+	if period != "year" {
+		period = "month"
+	}
+	interval := "month"
+	if period == "year" {
+		interval = "year"
+	}
 	rows, err := a.db.Query(r.Context(), `SELECT gmi.id,mi.title,COALESCE(mi.artist,''),COALESCE(mi.image_url,''),mi.canonical_url,COALESCE(AVG(r.value),0),COUNT(r.id) FROM group_music_items gmi JOIN music_items mi ON mi.id=gmi.music_item_id JOIN ratings r ON r.group_music_item_id=gmi.id WHERE gmi.group_id=$1 AND gmi.added_at>=date_trunc($2,NOW()) GROUP BY gmi.id,mi.id HAVING COUNT(r.id)>0 ORDER BY AVG(r.value) DESC,COUNT(r.id) DESC,gmi.added_at DESC LIMIT 10`, groupID, interval)
-	if err != nil { writeError(w, 500, "could not load rankings"); return }
-	defer rows.Close(); items := make([]map[string]any, 0); position := 1
-	for rows.Next() { var id,title,artist,imageURL,link string; var rating float64; var votes int64; if rows.Scan(&id,&title,&artist,&imageURL,&link,&rating,&votes)==nil { items=append(items,map[string]any{"position":position,"id":id,"title":title,"artist":artist,"imageUrl":imageURL,"url":link,"rating":rating,"votes":votes}); position++ } }
-	writeJSON(w, 200, map[string]any{"period":period,"items":items})
+	if err != nil {
+		writeError(w, 500, "could not load rankings")
+		return
+	}
+	defer rows.Close()
+	items := make([]map[string]any, 0)
+	position := 1
+	for rows.Next() {
+		var id, title, artist, imageURL, link string
+		var rating float64
+		var votes int64
+		if rows.Scan(&id, &title, &artist, &imageURL, &link, &rating, &votes) == nil {
+			items = append(items, map[string]any{"position": position, "id": id, "title": title, "artist": artist, "imageUrl": imageURL, "url": link, "rating": rating, "votes": votes})
+			position++
+		}
+	}
+	writeJSON(w, 200, map[string]any{"period": period, "items": items})
 }
 
-func (a *api) rateMusic(w http.ResponseWriter, r *http.Request) { var in struct{Value int `json:"value"`}; if !decodeJSON(w,r,&in){return}; if in.Value<1||in.Value>5{writeError(w,400,"rating must be between 1 and 5");return}; itemID,userID:=r.PathValue("itemID"),claimsFrom(r.Context()).UserID; result,err:=a.db.Exec(r.Context(),`INSERT INTO ratings(group_music_item_id,user_id,value) SELECT gmi.id,$2,$3 FROM group_music_items gmi JOIN group_members gm ON gm.group_id=gmi.group_id AND gm.user_id=$2 AND gm.status='active' WHERE gmi.id=$1 ON CONFLICT(group_music_item_id,user_id) DO UPDATE SET value=EXCLUDED.value,updated_at=NOW()`,itemID,userID,in.Value); if err!=nil||result.RowsAffected()==0{writeError(w,404,"music item not found");return}; w.WriteHeader(204) }
-func (a *api) listComments(w http.ResponseWriter,r *http.Request){itemID,userID:=r.PathValue("itemID"),claimsFrom(r.Context()).UserID;rows,err:=a.db.Query(r.Context(),`SELECT c.id,u.display_name,c.body,c.created_at FROM comments c JOIN users u ON u.id=c.user_id JOIN group_music_items gmi ON gmi.id=c.group_music_item_id JOIN group_members gm ON gm.group_id=gmi.group_id AND gm.user_id=$2 AND gm.status='active' WHERE c.group_music_item_id=$1 AND c.deleted_at IS NULL ORDER BY c.created_at`,itemID,userID);if err!=nil{writeError(w,500,"could not load comments");return};defer rows.Close();items:=make([]map[string]any,0);for rows.Next(){var id,name,body string;var created time.Time;if rows.Scan(&id,&name,&body,&created)==nil{items=append(items,map[string]any{"id":id,"displayName":name,"body":body,"createdAt":created})}};writeJSON(w,200,items)}
-func (a *api) addComment(w http.ResponseWriter,r *http.Request){var in struct{Body string `json:"body"`};if !decodeJSON(w,r,&in){return};in.Body=strings.TrimSpace(in.Body);if in.Body==""||len(in.Body)>4000{writeError(w,400,"comment must contain between 1 and 4000 characters");return};itemID,userID:=r.PathValue("itemID"),claimsFrom(r.Context()).UserID;var id string;err:=a.db.QueryRow(r.Context(),`INSERT INTO comments(group_music_item_id,user_id,body) SELECT gmi.id,$2,$3 FROM group_music_items gmi JOIN group_members gm ON gm.group_id=gmi.group_id AND gm.user_id=$2 AND gm.status='active' WHERE gmi.id=$1 RETURNING id`,itemID,userID,in.Body).Scan(&id);if err!=nil{writeError(w,404,"music item not found");return};writeJSON(w,201,map[string]string{"id":id})}
+func (a *api) rateMusic(w http.ResponseWriter, r *http.Request) {
+	var in struct {
+		Value int `json:"value"`
+	}
+	if !decodeJSON(w, r, &in) {
+		return
+	}
+	if in.Value < 1 || in.Value > 5 {
+		writeError(w, 400, "rating must be between 1 and 5")
+		return
+	}
+	itemID, userID := r.PathValue("itemID"), claimsFrom(r.Context()).UserID
+	result, err := a.db.Exec(r.Context(), `INSERT INTO ratings(group_music_item_id,user_id,value) SELECT gmi.id,$2,$3 FROM group_music_items gmi JOIN group_members gm ON gm.group_id=gmi.group_id AND gm.user_id=$2 AND gm.status='active' WHERE gmi.id=$1 ON CONFLICT(group_music_item_id,user_id) DO UPDATE SET value=EXCLUDED.value,updated_at=NOW()`, itemID, userID, in.Value)
+	if err != nil || result.RowsAffected() == 0 {
+		writeError(w, 404, "music item not found")
+		return
+	}
+	w.WriteHeader(204)
+}
+func (a *api) listComments(w http.ResponseWriter, r *http.Request) {
+	itemID, userID := r.PathValue("itemID"), claimsFrom(r.Context()).UserID
+	rows, err := a.db.Query(r.Context(), `SELECT c.id,u.display_name,c.body,c.created_at FROM comments c JOIN users u ON u.id=c.user_id JOIN group_music_items gmi ON gmi.id=c.group_music_item_id JOIN group_members gm ON gm.group_id=gmi.group_id AND gm.user_id=$2 AND gm.status='active' WHERE c.group_music_item_id=$1 AND c.deleted_at IS NULL ORDER BY c.created_at`, itemID, userID)
+	if err != nil {
+		writeError(w, 500, "could not load comments")
+		return
+	}
+	defer rows.Close()
+	items := make([]map[string]any, 0)
+	for rows.Next() {
+		var id, name, body string
+		var created time.Time
+		if rows.Scan(&id, &name, &body, &created) == nil {
+			items = append(items, map[string]any{"id": id, "displayName": name, "body": body, "createdAt": created})
+		}
+	}
+	writeJSON(w, 200, items)
+}
+func (a *api) addComment(w http.ResponseWriter, r *http.Request) {
+	var in struct {
+		Body string `json:"body"`
+	}
+	if !decodeJSON(w, r, &in) {
+		return
+	}
+	in.Body = strings.TrimSpace(in.Body)
+	if in.Body == "" || len(in.Body) > 4000 {
+		writeError(w, 400, "comment must contain between 1 and 4000 characters")
+		return
+	}
+	itemID, userID := r.PathValue("itemID"), claimsFrom(r.Context()).UserID
+	var id string
+	err := a.db.QueryRow(r.Context(), `INSERT INTO comments(group_music_item_id,user_id,body) SELECT gmi.id,$2,$3 FROM group_music_items gmi JOIN group_members gm ON gm.group_id=gmi.group_id AND gm.user_id=$2 AND gm.status='active' WHERE gmi.id=$1 RETURNING id`, itemID, userID, in.Body).Scan(&id)
+	if err != nil {
+		writeError(w, 404, "music item not found")
+		return
+	}
+	writeJSON(w, 201, map[string]string{"id": id})
+}
 
-func (a *api) dashboard(w http.ResponseWriter,r *http.Request){groupID:=r.PathValue("groupID");if !a.isGroupMember(r,groupID){writeError(w,403,"active group membership required");return};var total,month,members,comments int64;err:=a.db.QueryRow(r.Context(),`SELECT (SELECT COUNT(*) FROM group_music_items WHERE group_id=$1),(SELECT COUNT(*) FROM group_music_items WHERE group_id=$1 AND added_at>=date_trunc('month',NOW())),(SELECT COUNT(*) FROM group_members WHERE group_id=$1 AND status='active'),(SELECT COUNT(*) FROM comments c JOIN group_music_items gmi ON gmi.id=c.group_music_item_id WHERE gmi.group_id=$1 AND c.deleted_at IS NULL)`,groupID).Scan(&total,&month,&members,&comments);if err!=nil{writeError(w,500,"could not load dashboard");return};rows,err:=a.db.Query(r.Context(),`SELECT gmi.id,mi.title,COALESCE(mi.artist,''),COALESCE(mi.image_url,''),u.display_name,gmi.added_at FROM group_music_items gmi JOIN music_items mi ON mi.id=gmi.music_item_id JOIN users u ON u.id=gmi.added_by WHERE gmi.group_id=$1 ORDER BY gmi.added_at DESC LIMIT 5`,groupID);if err!=nil{writeError(w,500,"could not load recent music");return};defer rows.Close();recent:=make([]map[string]any,0);for rows.Next(){var id,title,artist,image,addedBy string;var addedAt time.Time;if rows.Scan(&id,&title,&artist,&image,&addedBy,&addedAt)==nil{recent=append(recent,map[string]any{"id":id,"title":title,"artist":artist,"imageUrl":image,"addedBy":addedBy,"addedAt":addedAt})}};writeJSON(w,200,map[string]any{"total":total,"month":month,"members":members,"comments":comments,"recent":recent})}
-func externalIDFromURL(u *url.URL,platform,kind string)string{if platform=="youtube"{if kind=="playlist"{return u.Query().Get("list")};return u.Query().Get("v")};if platform=="spotify"{parts:=strings.Split(strings.Trim(u.Path,"/"),"/");if len(parts)>=2{return parts[1]}};return ""}
-func normalizeIdentity(value string)string{var b strings.Builder;for _,r:=range strings.ToLower(value){if unicode.IsLetter(r)||unicode.IsDigit(r){b.WriteRune(r)}};return b.String()}
+func (a *api) dashboard(w http.ResponseWriter, r *http.Request) {
+	groupID := r.PathValue("groupID")
+	if !a.isGroupMember(r, groupID) {
+		writeError(w, 403, "active group membership required")
+		return
+	}
+	var total, month, members, comments int64
+	err := a.db.QueryRow(r.Context(), `SELECT (SELECT COUNT(*) FROM group_music_items WHERE group_id=$1),(SELECT COUNT(*) FROM group_music_items WHERE group_id=$1 AND added_at>=date_trunc('month',NOW())),(SELECT COUNT(*) FROM group_members WHERE group_id=$1 AND status='active'),(SELECT COUNT(*) FROM comments c JOIN group_music_items gmi ON gmi.id=c.group_music_item_id WHERE gmi.group_id=$1 AND c.deleted_at IS NULL)`, groupID).Scan(&total, &month, &members, &comments)
+	if err != nil {
+		writeError(w, 500, "could not load dashboard")
+		return
+	}
+	rows, err := a.db.Query(r.Context(), `SELECT gmi.id,mi.title,COALESCE(mi.artist,''),COALESCE(mi.image_url,''),u.display_name,gmi.added_at FROM group_music_items gmi JOIN music_items mi ON mi.id=gmi.music_item_id JOIN users u ON u.id=gmi.added_by WHERE gmi.group_id=$1 ORDER BY gmi.added_at DESC LIMIT 5`, groupID)
+	if err != nil {
+		writeError(w, 500, "could not load recent music")
+		return
+	}
+	defer rows.Close()
+	recent := make([]map[string]any, 0)
+	for rows.Next() {
+		var id, title, artist, image, addedBy string
+		var addedAt time.Time
+		if rows.Scan(&id, &title, &artist, &image, &addedBy, &addedAt) == nil {
+			recent = append(recent, map[string]any{"id": id, "title": title, "artist": artist, "imageUrl": image, "addedBy": addedBy, "addedAt": addedAt})
+		}
+	}
+	writeJSON(w, 200, map[string]any{"total": total, "month": month, "members": members, "comments": comments, "recent": recent})
+}
+func externalIDFromURL(u *url.URL, platform, kind string) string {
+	if platform == "youtube" {
+		if kind == "playlist" {
+			return u.Query().Get("list")
+		}
+		return u.Query().Get("v")
+	}
+	if platform == "spotify" {
+		parts := strings.Split(strings.Trim(u.Path, "/"), "/")
+		if len(parts) >= 2 {
+			return parts[1]
+		}
+	}
+	return ""
+}
+func normalizeIdentity(value string) string {
+	var b strings.Builder
+	for _, r := range strings.ToLower(value) {
+		if unicode.IsLetter(r) || unicode.IsDigit(r) {
+			b.WriteRune(r)
+		}
+	}
+	return b.String()
+}

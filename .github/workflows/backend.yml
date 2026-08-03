@@ -1,0 +1,49 @@
+name: Backend
+
+on:
+  push:
+    branches: [main, feat/dynamic-fields-api]
+  pull_request:
+    paths:
+      - "backend/**"
+      - ".github/workflows/backend.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'push' && github.ref_name || github.event.pull_request.head.sha }}
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+      - name: Apply Go formatting
+        run: gofmt -w .
+      - name: Resolve Go modules
+        run: go mod tidy
+      - name: Commit generated Go files
+        if: github.event_name == 'push'
+        working-directory: .
+        run: |
+          if git diff --quiet; then
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add backend
+          git commit -m "Actualizar formato y dependencias Go"
+          git push
+      - name: Verify formatting
+        run: test -z "$(gofmt -l .)"
+      - name: Verify module files
+        run: git diff --exit-code -- go.mod go.sum
+      - name: Test and compile
+        run: go test ./...
