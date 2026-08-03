@@ -1,0 +1,56 @@
+name: Conectar gestión de campos
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "backend/cmd/api/field_management.go"
+      - ".github/workflows/connect-field-management.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  connect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+      - name: Registrar rutas
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('backend/cmd/api/main.go')
+          text = path.read_text()
+          anchor = '\ta.registerConfigurableRoutes(mux)\n'
+          line = '\ta.registerFieldManagementRoutes(mux)\n'
+          if line not in text:
+              if anchor not in text:
+                  raise SystemExit('No se encontró el registro de rutas configurables')
+              text = text.replace(anchor, anchor + line)
+          path.write_text(text)
+          PY
+      - name: Formatear y probar
+        working-directory: backend
+        run: |
+          gofmt -w ./cmd/api
+          go test ./...
+      - name: Verificar rutas
+        run: |
+          grep -Fq 'registerFieldManagementRoutes' backend/cmd/api/main.go
+          grep -Fq 'PATCH /api/v1/groups/{groupID}/fields/{fieldID}' backend/cmd/api/field_management.go
+          grep -Fq 'DELETE /api/v1/groups/{groupID}/fields/{fieldID}' backend/cmd/api/field_management.go
+      - name: Confirmar cambios
+        run: |
+          if git diff --quiet; then exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add backend/cmd/api/main.go backend/cmd/api/field_management.go
+          git commit -m "Conectar edición y eliminación de campos"
+          git push
