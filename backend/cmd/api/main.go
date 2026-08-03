@@ -101,6 +101,7 @@ func (a *api) registerRoutes(mux *http.ServeMux) {
 	mux.Handle("POST /api/v1/groups/{groupID}/membership-requests/{userID}/approve", a.requireAuth(http.HandlerFunc(a.approveMember)))
 	mux.HandleFunc("POST /api/v1/links/inspect", inspectLink)
 	a.registerConfigurableRoutes(mux)
+	a.registerFieldManagementRoutes(mux)
 }
 
 func (a *api) health(w http.ResponseWriter, r *http.Request) {
