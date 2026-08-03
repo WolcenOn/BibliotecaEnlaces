@@ -12,28 +12,33 @@ const normalize = value => String(value || '').trim().toLocaleLowerCase('es');
 
 async function selectedGroup() {
   const groups = await api('/api/v1/groups');
-  return groups.find(group => String(group.id) === String(groupSelect.value));
+  return groups.find(group => String(group.id) === String(groupSelect?.value));
 }
 
 function downloadJSON(data, filename) {
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const json = JSON.stringify(data, null, 2);
+  const blob = new Blob([json], { type: 'application/json;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
   link.download = filename;
+  link.rel = 'noopener';
+  link.style.display = 'none';
   document.body.append(link);
   link.click();
   link.remove();
-  URL.revokeObjectURL(url);
+  window.setTimeout(() => URL.revokeObjectURL(url), 1500);
 }
 
 function portableField(field) {
   return {
-    name: field.name,
-    fieldType: field.fieldType,
-    isRequired: Boolean(field.isRequired),
-    isFilterable: Boolean(field.isFilterable),
-    options: (field.options || []).map(option => option.label)
+    name: String(field?.name || '').trim(),
+    fieldType: field?.fieldType === 'multi_select' ? 'multi_select' : 'single_select',
+    isRequired: Boolean(field?.isRequired),
+    isFilterable: Boolean(field?.isFilterable),
+    options: Array.isArray(field?.options)
+      ? field.options.map(option => String(option?.label || '').trim()).filter(Boolean)
+      : []
   };
 }
 
@@ -52,36 +57,45 @@ function portableResource(item) {
 }
 
 async function exportModel(kind) {
-  if (!groupSelect.value) return;
+  if (!groupSelect?.value) {
+    message.textContent = 'Selecciona una biblioteca antes de exportar.';
+    return;
+  }
   const button = kind === 'schema' ? exportSchemaButton : exportButton;
+  if (!button) {
+    message.textContent = 'No se encontró el botón de exportación. Recarga la aplicación.';
+    return;
+  }
+
   button.disabled = true;
   message.textContent = kind === 'schema' ? 'Preparando plantilla de estructura…' : 'Preparando copia completa…';
   try {
     const group = await selectedGroup();
+    if (!group) throw new Error('No se pudo identificar la biblioteca seleccionada.');
+
     const fields = await api(`/api/v1/groups/${encodeURIComponent(groupSelect.value)}/fields`);
+    const portableFields = Array.isArray(fields) ? fields.map(portableField).filter(field => field.name) : [];
     const model = {
       format: 'biblioteca-enlaces',
       version: 2,
       kind,
       exportedAt: new Date().toISOString(),
-      library: { name: group?.name || 'Biblioteca' },
-      schema: {
-        fields: fields.map(portableField)
-      }
+      library: { name: group.name || 'Biblioteca' },
+      schema: { fields: portableFields }
     };
 
     if (kind === 'full') {
       const resources = await api(`/api/v1/groups/${encodeURIComponent(groupSelect.value)}/resource-dashboard`);
-      model.resources = resources.map(portableResource);
+      model.resources = Array.isArray(resources) ? resources.map(portableResource) : [];
     }
 
     const suffix = kind === 'schema' ? 'estructura' : 'completa';
-    downloadJSON(model, `${cleanName(group?.name)}-${suffix}-${new Date().toISOString().slice(0, 10)}.json`);
+    downloadJSON(model, `${cleanName(group.name)}-${suffix}-${new Date().toISOString().slice(0, 10)}.json`);
     message.textContent = kind === 'schema'
-      ? `Exportada la estructura con ${model.schema.fields.length} campos.`
-      : `Exportados ${model.schema.fields.length} campos y ${model.resources.length} recursos.`;
+      ? `Estructura exportada correctamente: ${portableFields.length} campos.`
+      : `Copia exportada: ${portableFields.length} campos y ${model.resources.length} recursos.`;
   } catch (error) {
-    message.textContent = error.message;
+    message.textContent = `No se pudo exportar: ${error.message}`;
   } finally {
     button.disabled = false;
   }
@@ -89,15 +103,7 @@ async function exportModel(kind) {
 
 function normalizeModel(model) {
   if (!model || model.format !== 'biblioteca-enlaces') throw new Error('El archivo no es compatible con Biblioteca de Enlaces.');
-
-  if (model.version === 1) {
-    return {
-      kind: 'full',
-      fields: Array.isArray(model.fields) ? model.fields : [],
-      resources: Array.isArray(model.resources) ? model.resources : []
-    };
-  }
-
+  if (model.version === 1) return { kind: 'full', fields: Array.isArray(model.fields) ? model.fields : [], resources: Array.isArray(model.resources) ? model.resources : [] };
   if (model.version !== 2 || !['schema', 'full'].includes(model.kind)) throw new Error('La versión o el tipo de modelo no es compatible.');
   const fields = Array.isArray(model.schema?.fields) ? model.schema.fields : [];
   const resources = model.kind === 'full' && Array.isArray(model.resources) ? model.resources : [];
@@ -116,33 +122,19 @@ async function importLibrary(file) {
     const parsed = JSON.parse(await file.text());
     const model = normalizeModel(parsed);
     validateModel(model);
-
     const group = await selectedGroup();
     if (!group || !['owner', 'admin'].includes(group.role)) throw new Error('Solo el propietario o un administrador puede importar modelos.');
-
-    const detail = model.kind === 'schema'
-      ? `${model.fields.length} campos de estructura`
-      : `${model.fields.length} campos y ${model.resources.length} recursos`;
+    const detail = model.kind === 'schema' ? `${model.fields.length} campos de estructura` : `${model.fields.length} campos y ${model.resources.length} recursos`;
     if (!confirm(`Se importarán ${detail} en “${group.name}”. Los elementos existentes se conservarán y los duplicados se omitirán. ¿Continuar?`)) return;
 
     let fieldsCreated = 0;
     const currentFields = await api(`/api/v1/groups/${encodeURIComponent(group.id)}/fields`);
     const existingFieldNames = new Set(currentFields.map(field => normalize(field.name)));
-
     for (const field of model.fields) {
       if (!field?.name || existingFieldNames.has(normalize(field.name))) continue;
       if (!['single_select', 'multi_select'].includes(field.fieldType)) continue;
       message.textContent = `Creando estructura… ${fieldsCreated + 1}/${model.fields.length}`;
-      await api(`/api/v1/groups/${encodeURIComponent(group.id)}/fields`, {
-        method: 'POST',
-        body: JSON.stringify({
-          name: String(field.name).trim(),
-          fieldType: field.fieldType,
-          isRequired: Boolean(field.isRequired),
-          isFilterable: Boolean(field.isFilterable),
-          options: Array.isArray(field.options) ? field.options.map(value => String(value).trim()).filter(Boolean) : []
-        })
-      });
+      await api(`/api/v1/groups/${encodeURIComponent(group.id)}/fields`, { method: 'POST', body: JSON.stringify({ name: String(field.name).trim(), fieldType: field.fieldType, isRequired: Boolean(field.isRequired), isFilterable: Boolean(field.isFilterable), options: Array.isArray(field.options) ? field.options.map(value => String(value).trim()).filter(Boolean) : [] }) });
       existingFieldNames.add(normalize(field.name));
       fieldsCreated += 1;
     }
@@ -156,32 +148,13 @@ async function importLibrary(file) {
         const url = String(resource?.url || '').trim();
         if (!/^https?:\/\//i.test(url) || existingUrls.has(url.toLowerCase())) { skipped += 1; continue; }
         message.textContent = `Importando recursos… ${resourcesCreated + skipped + 1}/${model.resources.length}`;
-        await api(`/api/v1/groups/${encodeURIComponent(group.id)}/resources`, {
-          method: 'POST',
-          body: JSON.stringify({
-            url,
-            normalizedUrl: url,
-            finalUrl: url,
-            title: String(resource.title || url).trim(),
-            description: String(resource.description || '').trim(),
-            resourceType: String(resource.resourceType || 'link'),
-            provider: String(resource.provider || '').trim(),
-            mimeType: String(resource.mimeType || '').trim(),
-            thumbnailUrl: String(resource.thumbnailUrl || '').trim(),
-            originalComment: String(resource.originalComment || '').trim(),
-            sourceType: 'json_import',
-            fieldValues: {},
-            tags: Array.isArray(resource.tags) ? resource.tags.map(value => String(value).trim()).filter(Boolean) : []
-          })
-        });
+        await api(`/api/v1/groups/${encodeURIComponent(group.id)}/resources`, { method: 'POST', body: JSON.stringify({ url, normalizedUrl: url, finalUrl: url, title: String(resource.title || url).trim(), description: String(resource.description || '').trim(), resourceType: String(resource.resourceType || 'link'), provider: String(resource.provider || '').trim(), mimeType: String(resource.mimeType || '').trim(), thumbnailUrl: String(resource.thumbnailUrl || '').trim(), originalComment: String(resource.originalComment || '').trim(), sourceType: 'json_import', fieldValues: {}, tags: Array.isArray(resource.tags) ? resource.tags.map(value => String(value).trim()).filter(Boolean) : [] }) });
         existingUrls.add(url.toLowerCase());
         resourcesCreated += 1;
       }
     }
 
-    message.textContent = model.kind === 'schema'
-      ? `Plantilla aplicada: ${fieldsCreated} campos nuevos.`
-      : `Importación completada: ${fieldsCreated} campos y ${resourcesCreated} recursos creados; ${skipped} enlaces omitidos.`;
+    message.textContent = model.kind === 'schema' ? `Plantilla aplicada: ${fieldsCreated} campos nuevos.` : `Importación completada: ${fieldsCreated} campos y ${resourcesCreated} recursos creados; ${skipped} enlaces omitidos.`;
     window.setTimeout(() => location.reload(), 900);
   } catch (error) {
     message.textContent = error instanceof SyntaxError ? 'El archivo no contiene JSON válido.' : error.message;
