@@ -1,4 +1,4 @@
-const CACHE_NAME = 'biblioteca-enlaces-v18';
+const CACHE_NAME = 'biblioteca-enlaces-v19';
 const APP_SHELL = [
   './',
   './index.html',
@@ -32,7 +32,8 @@ const APP_SHELL = [
   './js/auth-gate.js',
   './js/share-entry.js',
   './js/install.js',
-  './icons/app-icon.svg?v=2',
+  './icons/app-icon-192.svg?v=1',
+  './icons/app-icon-512.svg?v=1',
   './manifest.webmanifest'
 ];
 
