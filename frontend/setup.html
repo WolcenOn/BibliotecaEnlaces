@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#09090b">
+  <title>Configuración inicial · Biblioteca de Enlaces</title>
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="stylesheet" href="./css/main.css">
+  <link rel="stylesheet" href="./css/library-layout.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><div class="brand-mark">↗</div><div><p class="eyebrow">Primer acceso</p><h1>Configurar biblioteca</h1></div></div>
+    <a class="button button-secondary" href="./index.html">Volver</a>
+  </header>
+  <main>
+    <section class="panel panel-body">
+      <div class="section-heading"><div><p class="eyebrow">Administrador inicial</p><h2>Crea la primera cuenta y biblioteca</h2><p>Necesitas el valor de <code>ADMIN_SETUP_TOKEN</code> configurado en Railway. Este token solo se utiliza para autorizar la creación inicial.</p></div></div>
+      <form id="setupForm" class="share-form panel-form">
+        <div class="form-grid">
+          <label class="field field-wide">Token de configuración<input id="setupToken" type="password" autocomplete="off" required></label>
+          <label class="field">Nombre visible<input id="displayName" autocomplete="name" required></label>
+          <label class="field">Nombre de la biblioteca<input id="groupName" required placeholder="Mi biblioteca"></label>
+          <label class="field field-wide">Correo electrónico<input id="email" type="email" autocomplete="username" required></label>
+          <label class="field">Contraseña<input id="password" type="password" autocomplete="new-password" minlength="8" required></label>
+          <label class="field">Repetir contraseña<input id="passwordConfirm" type="password" autocomplete="new-password" minlength="8" required></label>
+        </div>
+        <div class="form-actions"><button class="button" type="submit">Crear administrador</button><p id="setupMessage" class="form-message"></p></div>
+      </form>
+    </section>
+  </main>
+  <script src="./js/config.js"></script>
+  <script type="module" src="./js/setup.js"></script>
+</body>
+</html>
