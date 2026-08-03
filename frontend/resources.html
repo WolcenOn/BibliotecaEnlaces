@@ -59,6 +59,17 @@
       <div id="dynamicFilters" class="form-grid field-wide"></div>
       <button class="button button-secondary" type="submit">Filtrar</button>
     </form>
+    <div id="selectionBar" class="selection-bar" hidden>
+      <strong><span id="selectedCount">0</span> seleccionados</strong>
+      <div>
+        <button id="selectVisible" class="button button-secondary" type="button">Seleccionar resultados</button>
+        <button id="sendYoutube" class="button button-secondary" type="button">Abrir como lista de YouTube</button>
+        <button id="downloadSelected" class="button button-secondary" type="button">Descargar documentos</button>
+        <button id="copySelected" class="button button-secondary" type="button">Copiar enlaces</button>
+        <button id="clearSelection" class="button button-secondary" type="button">Limpiar</button>
+      </div>
+      <p id="selectionMessage" class="form-message"></p>
+    </div>
     <div id="resourceList" class="music-list"></div>
   </section>
 </main>
@@ -66,6 +77,6 @@
 <dialog id="editDialog"><form id="editForm" method="dialog" class="dialog-card"><div class="dialog-heading"><div><p class="eyebrow">Editar recurso</p><h2>Actualizar ficha</h2></div><button id="closeEdit" class="icon-button" type="button">×</button></div><input id="editId" type="hidden"><label class="field">Título<input id="editTitle" required></label><label class="field">Proveedor<input id="editProvider"></label><label class="field">Descripción<textarea id="editDescription" rows="3"></textarea></label><label class="field">Comentario<textarea id="editComment" rows="3"></textarea></label><label class="field">Miniatura<input id="editThumbnailUrl" type="url"></label><p id="editMessage" class="form-message"></p><div class="dialog-actions"><button id="deleteItem" class="button button-danger" type="button">Eliminar</button><span class="dialog-spacer"></span><button id="cancelEdit" class="button button-secondary" type="button">Cancelar</button><button class="button" type="submit">Guardar cambios</button></div></form></dialog>
 
 <dialog id="loginDialog" class="login-dialog"><form id="inlineLoginForm" class="login-card"><p class="eyebrow">Acceso privado</p><h2>Iniciar sesión</h2><label>Correo<input id="inlineEmail" type="email" required></label><label>Contraseña<input id="inlinePassword" type="password" required></label><p id="inlineLoginMessage" class="form-message"></p><button class="button" type="submit">Entrar</button></form></dialog>
-<script src="./js/config.js"></script><script src="./js/dashboard-fallback.js"></script><script type="module" src="./js/auth-gate.js"></script><script type="module" src="./js/resources.js"></script><script type="module" src="./js/dashboard-cards.js"></script><script type="module" src="./js/install.js"></script>
+<script src="./js/config.js"></script><script src="./js/dashboard-fallback.js"></script><script type="module" src="./js/auth-gate.js"></script><script type="module" src="./js/resources.js"></script><script type="module" src="./js/dashboard-cards.js"></script><script type="module" src="./js/bulk-actions.js?v=1"></script><script type="module" src="./js/install.js"></script>
 </body>
 </html>
