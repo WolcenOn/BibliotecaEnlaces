@@ -9,7 +9,10 @@ func (a *api) registerResourceSocialRoutes(mux *http.ServeMux) {
 	mux.Handle("POST /api/v1/resources/{resourceID}/comments", a.requireAuth(http.HandlerFunc(a.resourceComments)))
 	mux.Handle("PATCH /api/v1/resources/{resourceID}", a.requireAuth(http.HandlerFunc(a.updateResource)))
 	mux.Handle("DELETE /api/v1/resources/{resourceID}", a.requireAuth(http.HandlerFunc(a.deleteResource)))
-	mux.Handle("GET /api/v1/groups/{groupID}/managed-members", a.requireAuth(http.HandlerFunc(a.managedMembers)))
-	mux.Handle("PATCH /api/v1/groups/{groupID}/managed-members/{userID}", a.requireAuth(http.HandlerFunc(a.updateManagedMember)))
-	mux.Handle("DELETE /api/v1/groups/{groupID}/managed-members/{userID}", a.requireAuth(http.HandlerFunc(a.deleteManagedMember)))
+
+	// Member administration routes. The members-admin alias is intentionally
+	// versioned separately from the public member listing to avoid stale deployments.
+	mux.Handle("GET /api/v1/groups/{groupID}/members-admin", a.requireAuth(http.HandlerFunc(a.managedMembers)))
+	mux.Handle("PATCH /api/v1/groups/{groupID}/members-admin/{userID}", a.requireAuth(http.HandlerFunc(a.updateManagedMember)))
+	mux.Handle("DELETE /api/v1/groups/{groupID}/members-admin/{userID}", a.requireAuth(http.HandlerFunc(a.deleteManagedMember)))
 }
