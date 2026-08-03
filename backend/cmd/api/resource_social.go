@@ -65,17 +65,29 @@ func (a *api) groupMembers(w http.ResponseWriter, r *http.Request) {
 	items := make([]map[string]string, 0)
 	for rows.Next() {
 		var id, name string
-		if rows.Scan(&id, &name) == nil { items = append(items, map[string]string{"id": id, "displayName": name}) }
+		if rows.Scan(&id, &name) == nil {
+			items = append(items, map[string]string{"id": id, "displayName": name})
+		}
 	}
 	writeJSON(w, 200, items)
 }
 
 func (a *api) rateResource(w http.ResponseWriter, r *http.Request) {
 	claims := claimsFrom(r.Context())
-	var value struct{ Value int `json:"value"` }
-	if !decodeJSON(w, r, &value) || value.Value < 1 || value.Value > 5 { if value.Value < 1 || value.Value > 5 { writeError(w, 400, "rating must be between 1 and 5") }; return }
+	var value struct {
+		Value int `json:"value"`
+	}
+	if !decodeJSON(w, r, &value) || value.Value < 1 || value.Value > 5 {
+		if value.Value < 1 || value.Value > 5 {
+			writeError(w, 400, "rating must be between 1 and 5")
+		}
+		return
+	}
 	result, err := a.db.Exec(r.Context(), `INSERT INTO resource_ratings(resource_id,user_id,value) SELECT r.id,$2,$3 FROM resources r JOIN group_members gm ON gm.group_id=r.group_id AND gm.user_id=$2 AND gm.status='active' WHERE r.id=$1 ON CONFLICT(resource_id,user_id) DO UPDATE SET value=EXCLUDED.value,updated_at=NOW()`, r.PathValue("resourceID"), claims.UserID, value.Value)
-	if err != nil || result.RowsAffected() != 1 { writeError(w, 404, "resource not found"); return }
+	if err != nil || result.RowsAffected() != 1 {
+		writeError(w, 404, "resource not found")
+		return
+	}
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -84,26 +96,63 @@ func (a *api) resourceComments(w http.ResponseWriter, r *http.Request) {
 	claims := claimsFrom(r.Context())
 	if r.Method == http.MethodGet {
 		rows, err := a.db.Query(r.Context(), `SELECT rc.id,u.display_name,rc.body,rc.created_at FROM resource_comments rc JOIN users u ON u.id=rc.user_id JOIN resources res ON res.id=rc.resource_id JOIN group_members gm ON gm.group_id=res.group_id AND gm.user_id=$2 AND gm.status='active' WHERE rc.resource_id=$1 ORDER BY rc.created_at`, resourceID, claims.UserID)
-		if err != nil { writeError(w, 500, "could not load comments"); return }
-		defer rows.Close(); items := make([]map[string]any,0)
-		for rows.Next(){ var id,name,body string; var createdAt any; if rows.Scan(&id,&name,&body,&createdAt)==nil { items=append(items,map[string]any{"id":id,"displayName":name,"body":body,"createdAt":createdAt}) } }
-		writeJSON(w,200,items); return
+		if err != nil {
+			writeError(w, 500, "could not load comments")
+			return
+		}
+		defer rows.Close()
+		items := make([]map[string]any, 0)
+		for rows.Next() {
+			var id, name, body string
+			var createdAt any
+			if rows.Scan(&id, &name, &body, &createdAt) == nil {
+				items = append(items, map[string]any{"id": id, "displayName": name, "body": body, "createdAt": createdAt})
+			}
+		}
+		writeJSON(w, 200, items)
+		return
 	}
-	var in struct{ Body string `json:"body"` }; if !decodeJSON(w,r,&in){return}; in.Body=strings.TrimSpace(in.Body); if in.Body==""{writeError(w,400,"comment is required");return}
-	result,err:=a.db.Exec(r.Context(),`INSERT INTO resource_comments(resource_id,user_id,body) SELECT res.id,$2,$3 FROM resources res JOIN group_members gm ON gm.group_id=res.group_id AND gm.user_id=$2 AND gm.status='active' WHERE res.id=$1`,resourceID,claims.UserID,in.Body)
-	if err!=nil||result.RowsAffected()!=1{writeError(w,404,"resource not found");return}; writeJSON(w,201,map[string]string{"status":"created"})
+	var in struct {
+		Body string `json:"body"`
+	}
+	if !decodeJSON(w, r, &in) {
+		return
+	}
+	in.Body = strings.TrimSpace(in.Body)
+	if in.Body == "" {
+		writeError(w, 400, "comment is required")
+		return
+	}
+	result, err := a.db.Exec(r.Context(), `INSERT INTO resource_comments(resource_id,user_id,body) SELECT res.id,$2,$3 FROM resources res JOIN group_members gm ON gm.group_id=res.group_id AND gm.user_id=$2 AND gm.status='active' WHERE res.id=$1`, resourceID, claims.UserID, in.Body)
+	if err != nil || result.RowsAffected() != 1 {
+		writeError(w, 404, "resource not found")
+		return
+	}
+	writeJSON(w, 201, map[string]string{"status": "created"})
 }
 
 func (a *api) updateResource(w http.ResponseWriter, r *http.Request) {
-	claims:=claimsFrom(r.Context()); resourceID:=r.PathValue("resourceID")
-	var in struct{ Title,Description,Provider,OriginalComment,ThumbnailURL string }
-	if !decodeJSON(w,r,&in){return}
-	result,err:=a.db.Exec(r.Context(),`UPDATE resources r SET title=$3,description=$4,provider=$5,original_comment=$6,thumbnail_url=$7,updated_at=NOW() WHERE r.id=$1 AND (r.created_by=$2 OR EXISTS(SELECT 1 FROM group_members gm WHERE gm.group_id=r.group_id AND gm.user_id=$2 AND gm.status='active' AND gm.role IN ('owner','admin')))`,resourceID,claims.UserID,strings.TrimSpace(in.Title),strings.TrimSpace(in.Description),strings.TrimSpace(in.Provider),strings.TrimSpace(in.OriginalComment),strings.TrimSpace(in.ThumbnailURL))
-	if err!=nil||result.RowsAffected()!=1{writeError(w,403,"not allowed to edit this resource");return}; w.WriteHeader(204)
+	claims := claimsFrom(r.Context())
+	resourceID := r.PathValue("resourceID")
+	var in struct{ Title, Description, Provider, OriginalComment, ThumbnailURL string }
+	if !decodeJSON(w, r, &in) {
+		return
+	}
+	result, err := a.db.Exec(r.Context(), `UPDATE resources r SET title=$3,description=$4,provider=$5,original_comment=$6,thumbnail_url=$7,updated_at=NOW() WHERE r.id=$1 AND (r.created_by=$2 OR EXISTS(SELECT 1 FROM group_members gm WHERE gm.group_id=r.group_id AND gm.user_id=$2 AND gm.status='active' AND gm.role IN ('owner','admin')))`, resourceID, claims.UserID, strings.TrimSpace(in.Title), strings.TrimSpace(in.Description), strings.TrimSpace(in.Provider), strings.TrimSpace(in.OriginalComment), strings.TrimSpace(in.ThumbnailURL))
+	if err != nil || result.RowsAffected() != 1 {
+		writeError(w, 403, "not allowed to edit this resource")
+		return
+	}
+	w.WriteHeader(204)
 }
 
 func (a *api) deleteResource(w http.ResponseWriter, r *http.Request) {
-	claims:=claimsFrom(r.Context()); resourceID:=r.PathValue("resourceID")
-	result,err:=a.db.Exec(r.Context(),`DELETE FROM resources r WHERE r.id=$1 AND (r.created_by=$2 OR EXISTS(SELECT 1 FROM group_members gm WHERE gm.group_id=r.group_id AND gm.user_id=$2 AND gm.status='active' AND gm.role IN ('owner','admin')))`,resourceID,claims.UserID)
-	if err!=nil||result.RowsAffected()!=1{writeError(w,403,"not allowed to delete this resource");return}; w.WriteHeader(204)
+	claims := claimsFrom(r.Context())
+	resourceID := r.PathValue("resourceID")
+	result, err := a.db.Exec(r.Context(), `DELETE FROM resources r WHERE r.id=$1 AND (r.created_by=$2 OR EXISTS(SELECT 1 FROM group_members gm WHERE gm.group_id=r.group_id AND gm.user_id=$2 AND gm.status='active' AND gm.role IN ('owner','admin')))`, resourceID, claims.UserID)
+	if err != nil || result.RowsAffected() != 1 {
+		writeError(w, 403, "not allowed to delete this resource")
+		return
+	}
+	w.WriteHeader(204)
 }
