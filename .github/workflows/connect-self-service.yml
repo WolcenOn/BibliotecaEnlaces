@@ -1,6 +1,7 @@
 name: Conectar autoservicio
 
 on:
+  workflow_dispatch:
   push:
     branches: [main]
     paths:
@@ -37,6 +38,10 @@ jobs:
               text = text.replace(groups_get, groups_get + groups_post)
           path.write_text(text)
           PY
+      - name: Verificar rutas insertadas
+        run: |
+          grep -q 'POST /api/v1/auth/register' backend/cmd/api/main.go
+          grep -q 'POST /api/v1/groups' backend/cmd/api/main.go
       - name: Formatear y probar
         working-directory: backend
         run: |
