@@ -18,7 +18,6 @@ export function setApiUrl() {
 export function getToken() {
   const current = localStorage.getItem(TOKEN_KEY);
   if (current) return current;
-
   for (const key of LEGACY_TOKEN_KEYS) {
     const legacy = localStorage.getItem(key) || sessionStorage.getItem(key) || "";
     localStorage.removeItem(key);
@@ -41,18 +40,22 @@ export function setToken(value) {
 }
 
 function isPublicPath(path) {
-  return PUBLIC_PATHS.some(publicPath =>
-    publicPath.endsWith("/") ? path.startsWith(publicPath) : path === publicPath
-  );
+  return PUBLIC_PATHS.some(publicPath => publicPath.endsWith("/") ? path.startsWith(publicPath) : path === publicPath);
+}
+
+function apiError(message, status = 0, cause = null) {
+  const error = new Error(message);
+  error.status = status;
+  error.cause = cause;
+  return error;
 }
 
 export async function api(path, options = {}) {
   const base = getApiUrl();
-  if (!base) throw new Error("La aplicación no tiene configurada la URL de la API.");
+  if (!base) throw apiError("La aplicación no tiene configurada la URL de la API.");
 
   const headers = new Headers(options.headers || {});
   if (options.body && !headers.has("Content-Type")) headers.set("Content-Type", "application/json");
-
   if (!isPublicPath(path)) {
     const token = getToken();
     if (token) headers.set("Authorization", `Bearer ${token}`);
@@ -60,19 +63,14 @@ export async function api(path, options = {}) {
 
   let response;
   try {
-    response = await fetch(`${base}${path}`, {
-      ...options,
-      headers,
-      mode: "cors",
-      cache: "no-store"
-    });
-  } catch (error) {
-    console.error("API network error", { path, base, error });
-    throw new Error(`No se pudo conectar con la API (${path}). Revisa CORS o la conexión y recarga la aplicación.`);
+    response = await fetch(`${base}${path}`, { ...options, headers, mode: "cors", cache: "no-store" });
+  } catch (cause) {
+    console.error("API network error", { path, base, cause });
+    throw apiError(`No se pudo conectar con la API (${path}). Revisa CORS o la conexión y recarga la aplicación.`, 0, cause);
   }
 
   const data = response.status === 204 ? null : await response.json().catch(() => null);
   if (response.status === 401 && !isPublicPath(path)) setToken("");
-  if (!response.ok) throw new Error(data?.error || `Error HTTP ${response.status}`);
+  if (!response.ok) throw apiError(data?.error || `Error HTTP ${response.status}`, response.status);
   return data;
 }
