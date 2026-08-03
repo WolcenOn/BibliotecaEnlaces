@@ -21,8 +21,13 @@
   <section class="active-group panel"><div><p class="eyebrow">Biblioteca activa</p><label class="group-picker"><span class="sr-only">Seleccionar biblioteca</span><select id="groupSelect"></select></label></div><button id="toggleAdd" class="button" type="button">＋ Añadir recurso</button></section>
 
   <section class="panel panel-body transfer-panel">
-    <div class="transfer-copy"><p class="eyebrow">Instalación y modelos</p><h2>Compartir esta biblioteca</h2><p class="muted">Exporta la estructura y los recursos a JSON, o importa un modelo en la biblioteca seleccionada. No se incluyen usuarios, invitaciones, comentarios ni valoraciones.</p></div>
-    <div class="transfer-actions"><button id="exportLibrary" class="button button-secondary" type="button">Exportar JSON</button><button id="chooseImport" class="button button-secondary" type="button">Importar JSON</button><input id="importLibraryFile" type="file" accept="application/json,.json" hidden></div>
+    <div class="transfer-copy"><p class="eyebrow">Instalación y modelos</p><h2>Copias y plantillas JSON</h2><p class="muted">La copia completa incluye estructura y recursos. La plantilla de estructura incluye únicamente categorías, filtros, tipos de campo y opciones, para crear bibliotecas nuevas sin copiar contenido.</p></div>
+    <div class="transfer-actions">
+      <button id="exportLibrary" class="button button-secondary" type="button">Exportar copia completa</button>
+      <button id="exportSchema" class="button button-secondary" type="button">Exportar estructura</button>
+      <button id="chooseImport" class="button button-secondary" type="button">Importar JSON</button>
+      <input id="importLibraryFile" type="file" accept="application/json,.json" hidden>
+    </div>
     <p id="transferMessage" class="form-message" aria-live="polite"></p>
   </section>
 
