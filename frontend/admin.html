@@ -12,7 +12,17 @@
 <body>
   <header class="topbar"><div><p class="eyebrow">Administración</p><h1>Biblioteca de Enlaces</h1></div><nav><a class="button button-secondary" href="./resources.html">Biblioteca</a><button id="logout" class="button button-secondary">Salir</button></nav></header>
   <main>
-    <section class="panel panel-body"><div class="section-heading"><div><p class="eyebrow">Cuenta</p><h2>Panel de administración</h2><p id="profile">Cargando…</p></div></div><label class="field">Biblioteca<select id="groupSelect"></select></label></section>
+    <section class="panel panel-body">
+      <div class="section-heading"><div><p class="eyebrow">Cuenta</p><h2>Panel de administración</h2><p id="profile">Cargando…</p></div></div>
+      <div class="form-grid">
+        <label class="field">Biblioteca<select id="groupSelect"></select></label>
+        <form id="createLibraryForm" class="share-form">
+          <label class="field">Nueva biblioteca<input id="newLibraryName" maxlength="120" required placeholder="Nombre de la biblioteca"></label>
+          <button class="button" type="submit">Crear biblioteca</button>
+        </form>
+      </div>
+      <p id="createLibraryMessage" class="form-message" aria-live="polite"></p>
+    </section>
     <section class="admin-grid" aria-label="Resumen de miembros">
       <article class="panel admin-stat"><span>Miembros activos</span><strong id="activeCount">0</strong></article>
       <article class="panel admin-stat"><span>Solicitudes pendientes</span><strong id="pendingCount">0</strong></article>
@@ -45,6 +55,7 @@
   <script src="./js/config.js"></script>
   <script type="module" src="./js/auth-gate.js"></script>
   <script type="module" src="./js/admin.js"></script>
+  <script type="module" src="./js/create-library.js?v=1"></script>
   <script type="module" src="./js/library-transfer.js?v=3"></script>
 </body>
 </html>
