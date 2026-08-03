@@ -1,4 +1,4 @@
-const CACHE_NAME = 'biblioteca-enlaces-v8';
+const CACHE_NAME = 'biblioteca-enlaces-v9';
 const APP_SHELL = [
   './',
   './index.html',
