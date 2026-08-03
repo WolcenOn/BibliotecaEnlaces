@@ -102,6 +102,7 @@ func (a *api) registerRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/v1/links/inspect", inspectLink)
 	a.registerConfigurableRoutes(mux)
 	a.registerFieldManagementRoutes(mux)
+	a.registerResourceSocialRoutes(mux)
 }
 
 func (a *api) health(w http.ResponseWriter, r *http.Request) {
