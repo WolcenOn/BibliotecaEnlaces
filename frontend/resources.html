@@ -13,7 +13,7 @@
 <body>
 <header class="topbar">
   <div class="brand"><div class="brand-mark">↗</div><div><p class="eyebrow">Biblioteca configurable</p><h1>Recursos</h1></div></div>
-  <nav><a class="button button-secondary" href="./fields.html">Clasificación</a><a class="button button-secondary" href="./library.html">Vista anterior</a><button id="logout" class="button button-secondary">Salir</button></nav>
+  <nav><a class="button button-secondary" href="./fields.html">Clasificación y plantillas</a><button id="logout" class="button button-secondary">Salir</button></nav>
 </header>
 <main>
   <section class="active-group panel"><div><p class="eyebrow">Biblioteca activa</p><label class="group-picker"><span class="sr-only">Seleccionar biblioteca</span><select id="groupSelect"></select></label></div><button id="toggleAdd" class="button" type="button">＋ Añadir recurso</button></section>
@@ -31,7 +31,7 @@
         <label class="field field-wide">Comentario del grupo<textarea id="comment" rows="3"></textarea></label>
         <label class="field field-wide">URL de miniatura<input id="thumbnailUrl" type="url" placeholder="Se completa cuando es posible"></label>
         <div id="dynamicFields" class="form-grid field-wide"></div>
-        <label class="field field-wide">Etiquetas<input id="tags" placeholder="docker, fonología, imprimible"></label>
+        <label class="field field-wide">Etiquetas<input id="tags" placeholder="docker, seguridad, bases de datos"></label>
       </div>
       <div class="form-actions"><button class="button" type="submit">Guardar recurso</button><p id="formMessage" class="form-message"></p></div>
     </form>
@@ -39,7 +39,7 @@
 
   <section class="panel panel-body">
     <div class="section-heading"><div><p class="eyebrow">Colección</p><h2>Recursos guardados</h2></div><button id="reload" class="button button-secondary" type="button">Actualizar</button></div>
-    <div id="resourceList" class="music-list"></div>
+    <div id="resourceList" class="resource-list"></div>
   </section>
 </main>
 <dialog id="loginDialog" class="login-dialog"><form id="inlineLoginForm" class="login-card"><p class="eyebrow">Acceso privado</p><h2>Iniciar sesión</h2><label>Correo<input id="inlineEmail" type="email" required></label><label>Contraseña<input id="inlinePassword" type="password" required></label><p id="inlineLoginMessage" class="form-message"></p><button class="button" type="submit">Entrar</button></form></dialog>
