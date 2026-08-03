@@ -20,6 +20,12 @@
   <p id="installHint" class="panel panel-body" hidden>En iPhone o iPad, abre el menú Compartir y selecciona «Añadir a pantalla de inicio».</p>
   <section class="active-group panel"><div><p class="eyebrow">Biblioteca activa</p><label class="group-picker"><span class="sr-only">Seleccionar biblioteca</span><select id="groupSelect"></select></label></div><button id="toggleAdd" class="button" type="button">＋ Añadir recurso</button></section>
 
+  <section class="panel panel-body transfer-panel">
+    <div class="transfer-copy"><p class="eyebrow">Instalación y modelos</p><h2>Compartir esta biblioteca</h2><p class="muted">Exporta la estructura y los recursos a JSON, o importa un modelo en la biblioteca seleccionada. No se incluyen usuarios, invitaciones, comentarios ni valoraciones.</p></div>
+    <div class="transfer-actions"><button id="exportLibrary" class="button button-secondary" type="button">Exportar JSON</button><button id="chooseImport" class="button button-secondary" type="button">Importar JSON</button><input id="importLibraryFile" type="file" accept="application/json,.json" hidden></div>
+    <p id="transferMessage" class="form-message" aria-live="polite"></p>
+  </section>
+
   <section id="addPanel" class="panel panel-body" hidden>
     <div class="section-heading"><div><p class="eyebrow">Nuevo recurso</p><h2>Revisar y guardar</h2><p>Los campos de clasificación dependen de la biblioteca seleccionada.</p></div></div>
     <form id="resourceForm" class="share-form panel-form">
@@ -66,6 +72,6 @@
 <dialog id="editDialog"><form id="editForm" method="dialog" class="dialog-card"><div class="dialog-heading"><div><p class="eyebrow">Editar recurso</p><h2>Actualizar ficha</h2></div><button id="closeEdit" class="icon-button" type="button">×</button></div><input id="editId" type="hidden"><label class="field">Título<input id="editTitle" required></label><label class="field">Proveedor<input id="editProvider"></label><label class="field">Descripción<textarea id="editDescription" rows="3"></textarea></label><label class="field">Comentario<textarea id="editComment" rows="3"></textarea></label><label class="field">Miniatura<input id="editThumbnailUrl" type="url"></label><p id="editMessage" class="form-message"></p><div class="dialog-actions"><button id="deleteItem" class="button button-danger" type="button">Eliminar</button><span class="dialog-spacer"></span><button id="cancelEdit" class="button button-secondary" type="button">Cancelar</button><button class="button" type="submit">Guardar cambios</button></div></form></dialog>
 
 <dialog id="loginDialog" class="login-dialog"><form id="inlineLoginForm" class="login-card"><p class="eyebrow">Acceso privado</p><h2>Iniciar sesión</h2><label>Correo<input id="inlineEmail" type="email" required></label><label>Contraseña<input id="inlinePassword" type="password" required></label><p id="inlineLoginMessage" class="form-message"></p><button class="button" type="submit">Entrar</button></form></dialog>
-<script src="./js/config.js"></script><script src="./js/dashboard-fallback.js"></script><script type="module" src="./js/auth-gate.js"></script><script type="module" src="./js/resources.js"></script><script type="module" src="./js/dashboard-cards.js"></script><script type="module" src="./js/install.js"></script>
+<script src="./js/config.js"></script><script src="./js/dashboard-fallback.js"></script><script type="module" src="./js/auth-gate.js"></script><script type="module" src="./js/resources.js"></script><script type="module" src="./js/dashboard-cards.js"></script><script type="module" src="./js/install.js"></script><script type="module" src="./js/library-transfer.js"></script>
 </body>
 </html>
