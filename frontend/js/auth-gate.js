@@ -1,4 +1,4 @@
-import { api, setToken } from "./api.js";
+import { api, getToken, setToken } from "./api.js";
 
 const dialog = document.querySelector("#loginDialog");
 const form = document.querySelector("#inlineLoginForm");
@@ -34,18 +34,27 @@ if (dialog && form) {
       unlock();
       location.reload();
     } catch (error) {
-      setToken("");
       message.textContent = error.message;
     }
   });
 
   (async () => {
+    if (!getToken()) {
+      openLogin();
+      return;
+    }
     try {
       await api("/api/v1/me");
       unlock();
-    } catch {
-      setToken("");
-      openLogin("La sesión no existe o ha caducado.");
+    } catch (error) {
+      if (error.status === 401) {
+        setToken("");
+        openLogin("La sesión ha caducado. Inicia sesión de nuevo.");
+        return;
+      }
+      document.documentElement.classList.remove("auth-required");
+      if (dialog.open) dialog.close();
+      console.error("No se pudo validar temporalmente la sesión", error);
     }
   })();
 }
