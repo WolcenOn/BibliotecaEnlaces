@@ -1,3 +1,5 @@
+import './share-consumer.js';
+
 const resourceList = document.querySelector('#resourceList');
 const selectionBar = document.querySelector('#selectionBar');
 const selectedCount = document.querySelector('#selectedCount');
