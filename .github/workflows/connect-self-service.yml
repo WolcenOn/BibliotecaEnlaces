@@ -1,0 +1,54 @@
+name: Conectar autoservicio
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "backend/cmd/api/self_service.go"
+      - ".github/workflows/connect-self-service.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  connect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+      - name: Insertar rutas
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path("backend/cmd/api/main.go")
+          text = path.read_text()
+          login = '\tmux.HandleFunc("POST /api/v1/auth/login", a.login)\n'
+          register = '\tmux.HandleFunc("POST /api/v1/auth/register", a.registerAccount)\n'
+          groups_get = '\tmux.Handle("GET /api/v1/groups", a.requireAuth(http.HandlerFunc(a.groups)))\n'
+          groups_post = '\tmux.Handle("POST /api/v1/groups", a.requireAuth(http.HandlerFunc(a.createGroup)))\n'
+          if register not in text:
+              text = text.replace(login, login + register)
+          if groups_post not in text:
+              text = text.replace(groups_get, groups_get + groups_post)
+          path.write_text(text)
+          PY
+      - name: Formatear y probar
+        working-directory: backend
+        run: |
+          gofmt -w ./cmd/api
+          go test ./...
+      - name: Confirmar rutas
+        run: |
+          if git diff --quiet; then
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add backend/cmd/api/main.go backend/cmd/api/self_service.go
+          git commit -m "Conectar registro y creación de bibliotecas"
+          git push
