@@ -1,21 +1,28 @@
 (() => {
   const params = new URLSearchParams(location.search);
-  const candidates = [params.get("url"), params.get("text"), params.get("title")].filter(Boolean);
-  let shared = "";
+  const title = String(params.get('title') || '').trim();
+  const text = String(params.get('text') || '').trim();
+  const directURL = String(params.get('url') || '').trim();
+  const candidates = [directURL, text, title].filter(Boolean);
+  let url = '';
 
   for (const value of candidates) {
     const match = value.match(/https?:\/\/[^\s]+/i);
     if (match) {
-      shared = match[0].replace(/[),.;]+$/, "");
+      url = match[0].replace(/[),.;]+$/, '');
       break;
     }
   }
 
-  if (!shared) return;
+  if (!url) return;
 
-  // Preserve the shared URL while the inline authentication dialog validates
-  // or creates the browser session. Do not redirect away from library.html:
-  // keeping the original query string lets library.js open and fill the form
-  // immediately after authentication completes and the page reloads.
-  sessionStorage.setItem("musicDiscoveryPendingShare", shared);
+  sessionStorage.setItem('bibliotecaPendingShare', JSON.stringify({
+    url,
+    title: title && !/^https?:\/\//i.test(title) ? title : '',
+    text: text.replace(url, '').trim(),
+    receivedAt: Date.now()
+  }));
+
+  // Retira los parámetros para que una recarga no procese dos veces el mismo enlace.
+  history.replaceState(null, '', `${location.pathname}${location.hash}`);
 })();
