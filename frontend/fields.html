@@ -13,12 +13,27 @@
 <body>
 <header class="topbar">
   <div class="brand"><div class="brand-mark">⌁</div><div><p class="eyebrow">Configuración</p><h1>Campos de clasificación</h1></div></div>
-  <nav><a class="button button-secondary" href="./library.html">Volver a la biblioteca</a></nav>
+  <nav><a class="button button-secondary" href="./resources.html">Volver a la biblioteca</a></nav>
 </header>
 <main>
   <section class="panel panel-body">
-    <div class="section-heading"><div><p class="eyebrow">Biblioteca activa</p><h2>Clasificación personalizada</h2><p>Crea los campos que aparecerán al guardar y filtrar recursos.</p></div></div>
+    <div class="section-heading"><div><p class="eyebrow">Biblioteca activa</p><h2>Clasificación personalizada</h2><p>Una biblioteca nueva empieza vacía. Puedes crear campos manualmente o cargar una plantilla.</p></div></div>
     <label class="field">Biblioteca<select id="groupSelect"></select></label>
+  </section>
+
+  <section class="panel panel-body">
+    <div class="section-heading"><div><p class="eyebrow">Plantillas</p><h2>Preparar la biblioteca</h2><p>Las plantillas solo añaden los campos que todavía no existen y no modifican recursos guardados.</p></div></div>
+    <div class="form-grid">
+      <article class="panel panel-body field-wide">
+        <p class="eyebrow">Formación profesional</p>
+        <h3>2.º de ASIR</h3>
+        <p class="muted">Asignaturas, temas técnicos, tipo de material y dificultad para organizar recursos de Administración de Sistemas Informáticos en Red.</p>
+        <div class="form-actions">
+          <button id="applyAsirTemplate" class="button" type="button">Cargar plantilla 2.º ASIR</button>
+          <p id="templateMessage" class="form-message"></p>
+        </div>
+      </article>
+    </div>
   </section>
 
   <section class="panel panel-body">
