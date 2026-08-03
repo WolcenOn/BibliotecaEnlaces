@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#09090b">
+  <title>Crear biblioteca · Biblioteca de Enlaces</title>
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="stylesheet" href="./css/main.css">
+  <link rel="stylesheet" href="./css/library-layout.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand"><div class="brand-mark">↗</div><div><p class="eyebrow">Cuenta nueva</p><h1>Crear mi biblioteca</h1></div></div>
+  <a class="button button-secondary" href="./index.html">Volver</a>
+</header>
+<main>
+  <section class="panel panel-body">
+    <div class="section-heading"><div><p class="eyebrow">Registro seguro</p><h2>Tu cuenta y primera biblioteca</h2><p>La cuenta creada será propietaria de esta biblioteca. No necesitas ningún token de administración.</p></div></div>
+    <form id="registerForm" class="share-form panel-form">
+      <div class="form-grid">
+        <label class="field">Tu nombre<input id="displayName" autocomplete="name" required maxlength="120"></label>
+        <label class="field">Correo<input id="email" type="email" autocomplete="email" required></label>
+        <label class="field">Contraseña<input id="password" type="password" autocomplete="new-password" required minlength="10"></label>
+        <label class="field">Nombre de la biblioteca<input id="groupName" required maxlength="120" placeholder="Recursos del equipo"></label>
+      </div>
+      <div class="form-actions"><button class="button" type="submit">Crear cuenta y biblioteca</button><p id="registerMessage" class="form-message"></p></div>
+    </form>
+  </section>
+</main>
+<script src="./js/config.js"></script>
+<script type="module" src="./js/register.js"></script>
+</body>
+</html>
