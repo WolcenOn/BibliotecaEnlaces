@@ -2,6 +2,7 @@ import { api } from './api.js';
 
 const groupSelect = document.querySelector('#groupSelect');
 const exportButton = document.querySelector('#exportLibrary');
+const exportSchemaButton = document.querySelector('#exportSchema');
 const chooseImport = document.querySelector('#chooseImport');
 const fileInput = document.querySelector('#importLibraryFile');
 const message = document.querySelector('#transferMessage');
@@ -50,56 +51,88 @@ function portableResource(item) {
   };
 }
 
-async function exportLibrary() {
+async function exportModel(kind) {
   if (!groupSelect.value) return;
-  exportButton.disabled = true;
-  message.textContent = 'Preparando archivo JSON…';
+  const button = kind === 'schema' ? exportSchemaButton : exportButton;
+  button.disabled = true;
+  message.textContent = kind === 'schema' ? 'Preparando plantilla de estructura…' : 'Preparando copia completa…';
   try {
-    const [group, fields, resources] = await Promise.all([
-      selectedGroup(),
-      api(`/api/v1/groups/${encodeURIComponent(groupSelect.value)}/fields`),
-      api(`/api/v1/groups/${encodeURIComponent(groupSelect.value)}/resource-dashboard`)
-    ]);
+    const group = await selectedGroup();
+    const fields = await api(`/api/v1/groups/${encodeURIComponent(groupSelect.value)}/fields`);
     const model = {
       format: 'biblioteca-enlaces',
-      version: 1,
+      version: 2,
+      kind,
       exportedAt: new Date().toISOString(),
       library: { name: group?.name || 'Biblioteca' },
-      fields: fields.map(portableField),
-      resources: resources.map(portableResource)
+      schema: {
+        fields: fields.map(portableField)
+      }
     };
-    downloadJSON(model, `${cleanName(group?.name)}-${new Date().toISOString().slice(0, 10)}.json`);
-    message.textContent = `Exportados ${model.fields.length} campos y ${model.resources.length} recursos.`;
+
+    if (kind === 'full') {
+      const resources = await api(`/api/v1/groups/${encodeURIComponent(groupSelect.value)}/resource-dashboard`);
+      model.resources = resources.map(portableResource);
+    }
+
+    const suffix = kind === 'schema' ? 'estructura' : 'completa';
+    downloadJSON(model, `${cleanName(group?.name)}-${suffix}-${new Date().toISOString().slice(0, 10)}.json`);
+    message.textContent = kind === 'schema'
+      ? `Exportada la estructura con ${model.schema.fields.length} campos.`
+      : `Exportados ${model.schema.fields.length} campos y ${model.resources.length} recursos.`;
   } catch (error) {
     message.textContent = error.message;
   } finally {
-    exportButton.disabled = false;
+    button.disabled = false;
   }
 }
 
+function normalizeModel(model) {
+  if (!model || model.format !== 'biblioteca-enlaces') throw new Error('El archivo no es compatible con Biblioteca de Enlaces.');
+
+  if (model.version === 1) {
+    return {
+      kind: 'full',
+      fields: Array.isArray(model.fields) ? model.fields : [],
+      resources: Array.isArray(model.resources) ? model.resources : []
+    };
+  }
+
+  if (model.version !== 2 || !['schema', 'full'].includes(model.kind)) throw new Error('La versión o el tipo de modelo no es compatible.');
+  const fields = Array.isArray(model.schema?.fields) ? model.schema.fields : [];
+  const resources = model.kind === 'full' && Array.isArray(model.resources) ? model.resources : [];
+  return { kind: model.kind, fields, resources };
+}
+
 function validateModel(model) {
-  if (!model || model.format !== 'biblioteca-enlaces' || model.version !== 1) throw new Error('El archivo no es un modelo compatible de Biblioteca de Enlaces.');
-  if (!Array.isArray(model.fields) || !Array.isArray(model.resources)) throw new Error('El JSON no contiene campos y recursos válidos.');
-  if (model.resources.length > 5000 || model.fields.length > 100) throw new Error('El modelo supera el límite permitido.');
+  if (model.fields.length > 100) throw new Error('La plantilla supera el límite de 100 campos.');
+  if (model.resources.length > 5000) throw new Error('La copia supera el límite de 5.000 recursos.');
 }
 
 async function importLibrary(file) {
   chooseImport.disabled = true;
-  message.textContent = 'Leyendo modelo…';
+  message.textContent = 'Leyendo archivo JSON…';
   try {
-    const model = JSON.parse(await file.text());
+    const parsed = JSON.parse(await file.text());
+    const model = normalizeModel(parsed);
     validateModel(model);
+
     const group = await selectedGroup();
     if (!group || !['owner', 'admin'].includes(group.role)) throw new Error('Solo el propietario o un administrador puede importar modelos.');
-    if (!confirm(`Se importarán ${model.fields.length} campos y ${model.resources.length} recursos en “${group.name}”. Los enlaces duplicados se omitirán. ¿Continuar?`)) return;
+
+    const detail = model.kind === 'schema'
+      ? `${model.fields.length} campos de estructura`
+      : `${model.fields.length} campos y ${model.resources.length} recursos`;
+    if (!confirm(`Se importarán ${detail} en “${group.name}”. Los elementos existentes se conservarán y los duplicados se omitirán. ¿Continuar?`)) return;
 
     let fieldsCreated = 0;
     const currentFields = await api(`/api/v1/groups/${encodeURIComponent(group.id)}/fields`);
     const existingFieldNames = new Set(currentFields.map(field => normalize(field.name)));
+
     for (const field of model.fields) {
       if (!field?.name || existingFieldNames.has(normalize(field.name))) continue;
       if (!['single_select', 'multi_select'].includes(field.fieldType)) continue;
-      message.textContent = `Creando campos… ${fieldsCreated + 1}/${model.fields.length}`;
+      message.textContent = `Creando estructura… ${fieldsCreated + 1}/${model.fields.length}`;
       await api(`/api/v1/groups/${encodeURIComponent(group.id)}/fields`, {
         method: 'POST',
         body: JSON.stringify({
@@ -114,36 +147,41 @@ async function importLibrary(file) {
       fieldsCreated += 1;
     }
 
-    const currentResources = await api(`/api/v1/groups/${encodeURIComponent(group.id)}/resource-dashboard`);
-    const existingUrls = new Set(currentResources.map(item => String(item.url || '').trim().toLowerCase()));
     let resourcesCreated = 0;
     let skipped = 0;
-    for (const resource of model.resources) {
-      const url = String(resource?.url || '').trim();
-      if (!/^https?:\/\//i.test(url) || existingUrls.has(url.toLowerCase())) { skipped += 1; continue; }
-      message.textContent = `Importando recursos… ${resourcesCreated + skipped + 1}/${model.resources.length}`;
-      await api(`/api/v1/groups/${encodeURIComponent(group.id)}/resources`, {
-        method: 'POST',
-        body: JSON.stringify({
-          url,
-          normalizedUrl: url,
-          finalUrl: url,
-          title: String(resource.title || url).trim(),
-          description: String(resource.description || '').trim(),
-          resourceType: String(resource.resourceType || 'link'),
-          provider: String(resource.provider || '').trim(),
-          mimeType: String(resource.mimeType || '').trim(),
-          thumbnailUrl: String(resource.thumbnailUrl || '').trim(),
-          originalComment: String(resource.originalComment || '').trim(),
-          sourceType: 'json_import',
-          fieldValues: {},
-          tags: Array.isArray(resource.tags) ? resource.tags.map(value => String(value).trim()).filter(Boolean) : []
-        })
-      });
-      existingUrls.add(url.toLowerCase());
-      resourcesCreated += 1;
+    if (model.kind === 'full') {
+      const currentResources = await api(`/api/v1/groups/${encodeURIComponent(group.id)}/resource-dashboard`);
+      const existingUrls = new Set(currentResources.map(item => String(item.url || '').trim().toLowerCase()));
+      for (const resource of model.resources) {
+        const url = String(resource?.url || '').trim();
+        if (!/^https?:\/\//i.test(url) || existingUrls.has(url.toLowerCase())) { skipped += 1; continue; }
+        message.textContent = `Importando recursos… ${resourcesCreated + skipped + 1}/${model.resources.length}`;
+        await api(`/api/v1/groups/${encodeURIComponent(group.id)}/resources`, {
+          method: 'POST',
+          body: JSON.stringify({
+            url,
+            normalizedUrl: url,
+            finalUrl: url,
+            title: String(resource.title || url).trim(),
+            description: String(resource.description || '').trim(),
+            resourceType: String(resource.resourceType || 'link'),
+            provider: String(resource.provider || '').trim(),
+            mimeType: String(resource.mimeType || '').trim(),
+            thumbnailUrl: String(resource.thumbnailUrl || '').trim(),
+            originalComment: String(resource.originalComment || '').trim(),
+            sourceType: 'json_import',
+            fieldValues: {},
+            tags: Array.isArray(resource.tags) ? resource.tags.map(value => String(value).trim()).filter(Boolean) : []
+          })
+        });
+        existingUrls.add(url.toLowerCase());
+        resourcesCreated += 1;
+      }
     }
-    message.textContent = `Importación completada: ${fieldsCreated} campos y ${resourcesCreated} recursos creados; ${skipped} enlaces omitidos.`;
+
+    message.textContent = model.kind === 'schema'
+      ? `Plantilla aplicada: ${fieldsCreated} campos nuevos.`
+      : `Importación completada: ${fieldsCreated} campos y ${resourcesCreated} recursos creados; ${skipped} enlaces omitidos.`;
     window.setTimeout(() => location.reload(), 900);
   } catch (error) {
     message.textContent = error instanceof SyntaxError ? 'El archivo no contiene JSON válido.' : error.message;
@@ -153,7 +191,8 @@ async function importLibrary(file) {
   }
 }
 
-exportButton?.addEventListener('click', exportLibrary);
+exportButton?.addEventListener('click', () => exportModel('full'));
+exportSchemaButton?.addEventListener('click', () => exportModel('schema'));
 chooseImport?.addEventListener('click', () => fileInput.click());
 fileInput?.addEventListener('change', () => {
   const file = fileInput.files?.[0];
