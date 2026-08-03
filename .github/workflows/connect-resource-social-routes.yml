@@ -1,0 +1,51 @@
+name: Conectar rutas sociales de recursos
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "backend/cmd/api/resource_social_routes.go"
+      - ".github/workflows/connect-resource-social-routes.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  connect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+      - name: Registrar rutas
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('backend/cmd/api/main.go')
+          text = path.read_text()
+          anchor = '\ta.registerFieldManagementRoutes(mux)\n'
+          call = '\ta.registerResourceSocialRoutes(mux)\n'
+          if call not in text:
+              if anchor not in text:
+                  raise SystemExit('No se encontró el punto de inserción')
+              text = text.replace(anchor, anchor + call)
+          path.write_text(text)
+          PY
+      - name: Formatear y probar
+        working-directory: backend
+        run: |
+          gofmt -w ./cmd/api
+          go test ./...
+      - name: Confirmar cambios
+        run: |
+          if git diff --quiet; then exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add backend/cmd/api/main.go backend/cmd/api/resource_social_routes.go
+          git commit -m "Activar valoración y comentarios de recursos"
+          git push
