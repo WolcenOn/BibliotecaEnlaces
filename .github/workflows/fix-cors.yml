@@ -1,0 +1,90 @@
+name: Corregir CORS
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/fix-cors.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+      - name: Actualizar middleware CORS
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('backend/cmd/api/main.go')
+          text = path.read_text()
+          old = '''func cors(next http.Handler) http.Handler {
+\treturn http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+\t\torigin := envOr("FRONTEND_ORIGIN", "http://localhost:8000")
+\t\tw.Header().Set("Access-Control-Allow-Origin", origin)
+\t\tw.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+\t\tw.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
+\t\tw.Header().Set("Vary", "Origin")
+\t\tif r.Method == http.MethodOptions {
+\t\t\tw.WriteHeader(204)
+\t\t\treturn
+\t\t}
+\t\tnext.ServeHTTP(w, r)
+\t})
+}
+'''
+          new = '''func cors(next http.Handler) http.Handler {
+\treturn http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+\t\trequestOrigin := strings.TrimSpace(r.Header.Get("Origin"))
+\t\tconfiguredOrigin := strings.TrimRight(strings.TrimSpace(os.Getenv("FRONTEND_ORIGIN")), "/")
+\t\tallowed := requestOrigin == "https://wolcenon.github.io" ||
+\t\t\trequestOrigin == "http://localhost:8000" ||
+\t\t\trequestOrigin == "http://127.0.0.1:8000" ||
+\t\t\t(configuredOrigin != "" && requestOrigin == configuredOrigin)
+\n\t\tif allowed {
+\t\t\tw.Header().Set("Access-Control-Allow-Origin", requestOrigin)
+\t\t}
+\t\tw.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+\t\tw.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
+\t\tw.Header().Set("Access-Control-Max-Age", "600")
+\t\tw.Header().Add("Vary", "Origin")
+\n\t\tif r.Method == http.MethodOptions {
+\t\t\tif requestOrigin != "" && !allowed {
+\t\t\t\twriteError(w, http.StatusForbidden, "origin not allowed")
+\t\t\t\treturn
+\t\t\t}
+\t\t\tw.WriteHeader(http.StatusNoContent)
+\t\t\treturn
+\t\t}
+\t\tnext.ServeHTTP(w, r)
+\t})
+}
+'''
+          if old not in text:
+              raise SystemExit('No se encontró el middleware CORS esperado')
+          path.write_text(text.replace(old, new))
+          PY
+      - name: Formatear y probar
+        working-directory: backend
+        run: |
+          gofmt -w ./cmd/api
+          go test ./...
+      - name: Confirmar cambio
+        run: |
+          if git diff --quiet; then
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add backend/cmd/api/main.go
+          git commit -m "Permitir GitHub Pages en CORS"
+          git push
