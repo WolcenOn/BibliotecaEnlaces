@@ -14,9 +14,10 @@
 <body>
 <header class="topbar">
   <div class="brand"><div class="brand-mark">↗</div><div><p class="eyebrow">Biblioteca configurable</p><h1>Recursos</h1></div></div>
-  <nav><a class="button button-secondary" href="./fields.html">Clasificación</a><a class="button button-secondary" href="./admin.html">Miembros</a><button id="logout" class="button button-secondary">Salir</button></nav>
+  <nav><button id="installButton" class="button" type="button" hidden>Instalar app</button><a class="button button-secondary" href="./fields.html">Clasificación</a><a class="button button-secondary" href="./admin.html">Miembros</a><button id="logout" class="button button-secondary">Salir</button></nav>
 </header>
 <main>
+  <p id="installHint" class="panel panel-body" hidden>En iPhone o iPad, abre el menú Compartir y selecciona «Añadir a pantalla de inicio».</p>
   <section class="active-group panel"><div><p class="eyebrow">Biblioteca activa</p><label class="group-picker"><span class="sr-only">Seleccionar biblioteca</span><select id="groupSelect"></select></label></div><button id="toggleAdd" class="button" type="button">＋ Añadir recurso</button></section>
 
   <section id="addPanel" class="panel panel-body" hidden>
@@ -65,6 +66,6 @@
 <dialog id="editDialog"><form id="editForm" method="dialog" class="dialog-card"><div class="dialog-heading"><div><p class="eyebrow">Editar recurso</p><h2>Actualizar ficha</h2></div><button id="closeEdit" class="icon-button" type="button">×</button></div><input id="editId" type="hidden"><label class="field">Título<input id="editTitle" required></label><label class="field">Proveedor<input id="editProvider"></label><label class="field">Descripción<textarea id="editDescription" rows="3"></textarea></label><label class="field">Comentario<textarea id="editComment" rows="3"></textarea></label><label class="field">Miniatura<input id="editThumbnailUrl" type="url"></label><p id="editMessage" class="form-message"></p><div class="dialog-actions"><button id="deleteItem" class="button button-danger" type="button">Eliminar</button><span class="dialog-spacer"></span><button id="cancelEdit" class="button button-secondary" type="button">Cancelar</button><button class="button" type="submit">Guardar cambios</button></div></form></dialog>
 
 <dialog id="loginDialog" class="login-dialog"><form id="inlineLoginForm" class="login-card"><p class="eyebrow">Acceso privado</p><h2>Iniciar sesión</h2><label>Correo<input id="inlineEmail" type="email" required></label><label>Contraseña<input id="inlinePassword" type="password" required></label><p id="inlineLoginMessage" class="form-message"></p><button class="button" type="submit">Entrar</button></form></dialog>
-<script src="./js/config.js"></script><script src="./js/dashboard-fallback.js"></script><script type="module" src="./js/auth-gate.js"></script><script type="module" src="./js/resources.js"></script><script type="module" src="./js/dashboard-cards.js"></script>
+<script src="./js/config.js"></script><script src="./js/dashboard-fallback.js"></script><script type="module" src="./js/auth-gate.js"></script><script type="module" src="./js/resources.js"></script><script type="module" src="./js/dashboard-cards.js"></script><script type="module" src="./js/install.js"></script>
 </body>
 </html>
