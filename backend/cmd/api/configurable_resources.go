@@ -39,7 +39,7 @@ type resourceInput struct {
 	OriginalComment string              `json:"originalComment"`
 	SourceType      string              `json:"sourceType"`
 	SourceAuthor    string              `json:"sourceAuthor"`
-	SourceDate      *time.Time           `json:"sourceDate"`
+	SourceDate      *time.Time          `json:"sourceDate"`
 	FieldValues     map[string][]string `json:"fieldValues"`
 	Tags            []string            `json:"tags"`
 }
