@@ -8,6 +8,10 @@ import (
 	"github.com/WolcenOn/BibliotecaEnlaces/backend/internal/auth"
 )
 
+func (a *api) registerPasswordRecoveryRoutes(mux *http.ServeMux) {
+	mux.HandleFunc("POST /api/v1/setup/reset-owner-password", a.resetOwnerPassword)
+}
+
 func (a *api) resetOwnerPassword(w http.ResponseWriter, r *http.Request) {
 	var in struct {
 		SetupToken string `json:"setupToken"`
