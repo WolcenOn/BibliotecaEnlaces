@@ -3,70 +3,63 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="theme-color" content="#09090b">
   <title>Recursos · Biblioteca de Enlaces</title>
   <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" href="./icons/app-icon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="./css/main.css">
-  <link rel="stylesheet" href="./css/library-layout.css">
-  <link rel="stylesheet" href="./css/auth-gate.css">
   <link rel="stylesheet" href="./css/dashboard-cards.css">
 </head>
 <body>
 <header class="topbar">
   <div class="brand"><div class="brand-mark">↗</div><div><p class="eyebrow">Biblioteca configurable</p><h1>Recursos</h1></div></div>
-  <nav><button id="installButton" class="button" type="button" hidden>Instalar app</button><a class="button button-secondary" href="./fields.html">Clasificación</a><a class="button button-secondary" href="./admin.html">Administración</a><button id="logout" class="button button-secondary">Salir</button></nav>
+  <nav><a class="button button-secondary" href="./fields.html">Clasificación y plantillas</a><button id="installApp" class="button button-secondary" type="button" hidden>Instalar app</button><button id="logout" class="button button-secondary">Salir</button></nav>
 </header>
 <main>
-  <p id="installHint" class="panel panel-body" hidden>En iPhone o iPad, abre el menú Compartir y selecciona «Añadir a pantalla de inicio».</p>
   <section class="active-group panel"><div><p class="eyebrow">Biblioteca activa</p><label class="group-picker"><span class="sr-only">Seleccionar biblioteca</span><select id="groupSelect"></select></label></div><button id="toggleAdd" class="button" type="button">＋ Añadir recurso</button></section>
 
   <section id="addPanel" class="panel panel-body" hidden>
-    <div class="section-heading"><div><p class="eyebrow">Nuevo recurso</p><h2>Revisar y guardar</h2><p>Los campos de clasificación dependen de la biblioteca seleccionada.</p></div></div>
-    <form id="resourceForm" class="share-form panel-form">
-      <label class="field field-wide">Enlace<div class="url-row"><input id="resourceUrl" type="url" required placeholder="https://…"><button id="inspectButton" class="button button-secondary" type="button">Reconocer</button></div></label>
-      <div id="metadataPreview" class="metadata-preview" hidden></div>
+    <div class="section-heading"><div><p class="eyebrow">Nueva ficha</p><h2>Añadir recurso</h2></div></div>
+    <form id="resourceForm">
       <div class="form-grid">
+        <label class="field field-wide">URL<div class="input-action"><input id="resourceUrl" type="url" required placeholder="Pega un enlace"><button id="inspectButton" class="button button-secondary" type="button">Reconocer</button></div></label>
+        <div id="metadataPreview" class="metadata-preview field-wide" hidden></div>
         <label class="field field-wide">Título<input id="title" required></label>
-        <label class="field">Tipo técnico<select id="resourceType"><option value="link">Enlace</option><option value="pdf">PDF</option><option value="image">Imagen</option><option value="video">Vídeo</option><option value="audio">Audio</option><option value="document">Documento</option><option value="presentation">Presentación</option><option value="spreadsheet">Hoja de cálculo</option><option value="interactive">Interactivo</option></select></label>
-        <label class="field">Proveedor o fuente<input id="provider"></label>
-        <label class="field field-wide">Descripción<textarea id="description" rows="3"></textarea></label>
+        <label class="field field-wide">Descripción<textarea id="description" rows="4"></textarea></label>
+        <label class="field">Tipo<select id="resourceType"><option value="link">Enlace</option><option value="pdf">PDF</option><option value="image">Imagen</option><option value="video">Vídeo</option><option value="audio">Audio</option><option value="document">Documento</option><option value="presentation">Presentación</option><option value="spreadsheet">Hoja de cálculo</option><option value="interactive">Interactivo</option></select></label>
+        <label class="field">Proveedor<input id="provider"></label>
         <label class="field field-wide">Comentario del grupo<textarea id="comment" rows="3"></textarea></label>
-        <label class="field field-wide">URL de miniatura<input id="thumbnailUrl" type="url"></label>
+        <label class="field field-wide">URL de miniatura<input id="thumbnailUrl" type="url" placeholder="Se completa cuando es posible"></label>
         <div id="dynamicFields" class="form-grid field-wide"></div>
-        <label class="field field-wide">Etiquetas<input id="tags" placeholder="docker, redes, seguridad"></label>
+        <label class="field field-wide">Etiquetas de Gemini<input id="tags" placeholder="oauth 2.0, autenticación en Go, seguridad de APIs"></label>
       </div>
       <div class="form-actions"><button class="button" type="submit">Guardar recurso</button><p id="formMessage" class="form-message"></p></div>
     </form>
   </section>
 
-  <section class="stats-grid" aria-label="Resumen">
-    <article class="stat panel"><span>Total de recursos</span><strong id="total">0</strong></article>
-    <article class="stat panel"><span>Nuevos este mes</span><strong id="month">0</strong></article>
-    <article class="stat panel"><span>Miembros activos</span><strong id="members">0</strong></article>
-    <article class="stat panel"><span>Comentarios</span><strong id="commentCount">0</strong></article>
+  <section class="dashboard-grid">
+    <article class="stat-card"><span>Total</span><strong id="total">0</strong></article>
+    <article class="stat-card"><span>Este mes</span><strong id="month">0</strong></article>
+    <article class="stat-card"><span>Miembros</span><strong id="members">0</strong></article>
+    <article class="stat-card"><span>Comentarios</span><strong id="commentCount">0</strong></article>
   </section>
 
-  <div class="dashboard-grid">
-    <section class="panel recent-panel"><div class="section-heading"><div><p class="eyebrow">Actividad reciente</p><h2>Últimos cinco añadidos</h2></div></div><div id="recentList" class="recent-list"></div></section>
-    <section class="panel ranking-panel"><div class="section-heading"><div><p class="eyebrow">Valoración</p><h2>Mejor valorados</h2></div></div><div id="rankingList" class="ranking-list"></div></section>
-  </div>
+  <section class="panel panel-body">
+    <div class="section-heading"><div><p class="eyebrow">Explorar</p><h2>Buscar y filtrar</h2></div><button id="reload" class="button button-secondary" type="button">Actualizar</button></div>
+    <form id="filters" class="filter-grid"><label class="field field-wide">Buscar<input id="search" placeholder="Título, descripción, proveedor o etiqueta"></label><label class="field">Añadido por<select id="memberFilter"><option value="">Todos los miembros</option></select></label><div id="dynamicFilters" class="filter-grid field-wide"></div></form>
+  </section>
+
+  <section class="dashboard-columns">
+    <article class="panel panel-body"><div class="section-heading"><div><p class="eyebrow">Actividad</p><h2>Recientes</h2></div></div><div id="recentList"></div></article>
+    <article class="panel panel-body"><div class="section-heading"><div><p class="eyebrow">Comunidad</p><h2>Mejor valorados</h2></div></div><div id="rankingList"></div></article>
+  </section>
 
   <section class="panel panel-body">
-    <div class="section-heading"><div><p class="eyebrow">Colección</p><h2>Recursos guardados</h2></div><button id="reload" class="button button-secondary" type="button">Actualizar</button></div>
-    <form id="filters" class="filters">
-      <input id="search" type="search" placeholder="Buscar título, descripción o fuente">
-      <select id="memberFilter"><option value="">Todos los miembros</option></select>
-      <div id="dynamicFilters" class="form-grid field-wide"></div>
-      <button class="button button-secondary" type="submit">Filtrar</button>
-    </form>
-    <div id="selectionBar" class="selection-bar" hidden>
-      <strong><span id="selectedCount">0</span> seleccionados</strong>
+    <div class="section-heading"><div><p class="eyebrow">Colección</p><h2>Recursos guardados</h2></div><div class="selection-actions"><button id="selectAll" class="button button-secondary" type="button">Seleccionar todo</button><button id="deleteSelected" class="button button-danger" type="button">Eliminar seleccionados</button></div></div>
+    <div id="selectionToolbar" class="selection-toolbar">
+      <span id="selectionCount">0 seleccionados</span>
       <div>
-        <button id="selectVisible" class="button button-secondary" type="button">Seleccionar resultados</button>
-        <button id="sendYoutube" class="button button-secondary" type="button">Abrir como lista de YouTube</button>
-        <button id="downloadSelected" class="button button-secondary" type="button">Descargar documentos</button>
-        <button id="copySelected" class="button button-secondary" type="button">Copiar enlaces</button>
-        <button id="clearSelection" class="button button-secondary" type="button">Limpiar</button>
+        <button id="exportSelected" class="button button-secondary" type="button">Exportar</button>
+        <button id="moveSelected" class="button button-secondary" type="button">Mover</button>
       </div>
       <p id="selectionMessage" class="form-message"></p>
     </div>
@@ -77,6 +70,6 @@
 <dialog id="editDialog"><form id="editForm" method="dialog" class="dialog-card"><div class="dialog-heading"><div><p class="eyebrow">Editar recurso</p><h2>Actualizar ficha</h2></div><button id="closeEdit" class="icon-button" type="button">×</button></div><input id="editId" type="hidden"><label class="field">Título<input id="editTitle" required></label><label class="field">Proveedor<input id="editProvider"></label><label class="field">Descripción<textarea id="editDescription" rows="3"></textarea></label><label class="field">Comentario<textarea id="editComment" rows="3"></textarea></label><label class="field">Miniatura<input id="editThumbnailUrl" type="url"></label><p id="editMessage" class="form-message"></p><div class="dialog-actions"><button id="deleteItem" class="button button-danger" type="button">Eliminar</button><span class="dialog-spacer"></span><button id="cancelEdit" class="button button-secondary" type="button">Cancelar</button><button class="button" type="submit">Guardar cambios</button></div></form></dialog>
 
 <dialog id="loginDialog" class="login-dialog"><form id="inlineLoginForm" class="login-card"><p class="eyebrow">Acceso privado</p><h2>Iniciar sesión</h2><label>Correo<input id="inlineEmail" type="email" required></label><label>Contraseña<input id="inlinePassword" type="password" required></label><p id="inlineLoginMessage" class="form-message"></p><button class="button" type="submit">Entrar</button></form></dialog>
-<script src="./js/config.js"></script><script src="./js/dashboard-fallback.js"></script><script type="module" src="./js/auth-gate.js"></script><script type="module" src="./js/resources.js"></script><script type="module" src="./js/dashboard-cards.js"></script><script type="module" src="./js/bulk-actions.js?v=1"></script><script type="module" src="./js/gemini-enrich.js?v=3"></script><script type="module" src="./js/install.js"></script>
+<script src="./js/config.js"></script><script src="./js/dashboard-fallback.js"></script><script type="module" src="./js/auth-gate.js"></script><script type="module" src="./js/resources.js"></script><script type="module" src="./js/dashboard-cards.js"></script><script type="module" src="./js/bulk-actions.js?v=1"></script><script type="module" src="./js/gemini-enrich.js?v=6"></script><script type="module" src="./js/install.js"></script>
 </body>
 </html>
