@@ -40,7 +40,7 @@ func (a *api) resetOwnerPassword(w http.ResponseWriter, r *http.Request) {
 
 	result, err := a.db.Exec(r.Context(), `
 		UPDATE users u
-		SET password_hash=$2, updated_at=NOW()
+		SET password_hash=$2
 		WHERE u.email=$1
 		  AND u.status='active'
 		  AND EXISTS (
