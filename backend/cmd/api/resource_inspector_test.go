@@ -42,10 +42,11 @@ func TestDetectTechnicalResource(t *testing.T) {
 func TestExtractHTMLMetadata(t *testing.T) {
 	base, _ := url.Parse("https://example.org/articles/item")
 	result := resourceInspection{}
+	expectedDescription := "Explicación práctica sobre evaluación formativa con ejemplos aplicables en el aula."
 	htmlDocument := []byte(`<!doctype html><html><head>
 		<title>Título de respaldo</title>
 		<meta property="og:title" content="Recurso educativo">
-		<meta name="description" content="Descripción del recurso">
+		<meta name="description" content="` + expectedDescription + `">
 		<meta property="og:image" content="/images/preview.jpg">
 	</head></html>`)
 
@@ -53,7 +54,7 @@ func TestExtractHTMLMetadata(t *testing.T) {
 	if result.Title != "Recurso educativo" {
 		t.Fatalf("title=%q", result.Title)
 	}
-	if result.Description != "Descripción del recurso" {
+	if result.Description != expectedDescription {
 		t.Fatalf("description=%q", result.Description)
 	}
 	if result.ThumbnailURL != "https://example.org/images/preview.jpg" {
