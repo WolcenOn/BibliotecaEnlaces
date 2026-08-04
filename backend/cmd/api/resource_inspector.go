@@ -36,7 +36,7 @@ var (
 	metaPattern        = regexp.MustCompile(`(?is)<meta\s+[^>]*>`)
 	attrPattern        = regexp.MustCompile(`(?is)([a-zA-Z_:][-a-zA-Z0-9_:.]*)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))`)
 	paragraphPattern   = regexp.MustCompile(`(?is)<p(?:\s+[^>]*)?>(.*?)</p>`)
-	scriptStylePattern = regexp.MustCompile(`(?is)<(script|style|noscript)[^>]*>.*?</\1>`)
+	scriptStylePattern = regexp.MustCompile(`(?is)<script[^>]*>.*?</script>|<style[^>]*>.*?</style>|<noscript[^>]*>.*?</noscript>`)
 	spacePattern       = regexp.MustCompile(`\s+`)
 )
 
