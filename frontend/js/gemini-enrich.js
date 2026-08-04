@@ -32,12 +32,7 @@ function configuredFields() {
     const options = isMulti
       ? controls.map(control => ({ id: control.value, label: control.parentElement?.textContent?.trim() || control.value }))
       : [...first.options].filter(option => option.value).map(option => ({ id: option.value, label: option.textContent.trim() }));
-    return {
-      id,
-      name,
-      fieldType: isMulti ? 'multi_select' : 'single_select',
-      options
-    };
+    return { id, name, fieldType: isMulti ? 'multi_select' : 'single_select', options };
   });
 }
 
@@ -56,10 +51,7 @@ function applyFieldValues(values = []) {
 }
 
 function normalizeTag(value) {
-  return String(value || '')
-    .trim()
-    .replace(/^#+/, '')
-    .replace(/\s+/g, ' ')
+  return String(value || '').trim().replace(/^#+/, '').replace(/\s+/g, ' ')
     .replace(/^[,.;:!?()\[\]{}"']+|[,.;:!?()\[\]{}"']+$/g, '');
 }
 
@@ -75,12 +67,8 @@ function thematicTags(result) {
   };
 
   (Array.isArray(result.tags) ? result.tags : []).forEach(add);
-
-  const source = `${result.title || ''} ${result.description || ''}`
-    .normalize('NFKC')
-    .replace(/https?:\/\/\S+/g, ' ')
-    .replace(/[^\p{L}\p{N}+#.\-]+/gu, ' ');
-
+  const source = `${result.title || ''} ${result.description || ''}`.normalize('NFKC')
+    .replace(/https?:\/\/\S+/g, ' ').replace(/[^\p{L}\p{N}+#.\-]+/gu, ' ');
   const words = source.split(/\s+/).map(normalizeTag).filter(Boolean);
   const frequencies = new Map();
   for (const word of words) {
@@ -88,27 +76,59 @@ function thematicTags(result) {
     if (word.length < 4 || tagStopWords.has(key) || /^\d+$/.test(word)) continue;
     frequencies.set(word, (frequencies.get(word) || 0) + 1);
   }
+  [...frequencies.entries()].sort((a, b) => b[1] - a[1] || b[0].length - a[0].length)
+    .forEach(([word]) => { if (tags.length < 10) add(word); });
 
-  [...frequencies.entries()]
-    .sort((a, b) => b[1] - a[1] || b[0].length - a[0].length)
-    .forEach(([word]) => {
-      if (tags.length < 10) add(word);
-    });
-
-  const fieldLabels = [];
   for (const suggestion of result.fieldValues || []) {
     for (const optionId of suggestion.optionIds || []) {
       const option = document.querySelector(`[data-field-id="${CSS.escape(suggestion.fieldId)}"] option[value="${CSS.escape(optionId)}"]`);
       const checkbox = document.querySelector(`[data-field-id="${CSS.escape(suggestion.fieldId)}"][value="${CSS.escape(optionId)}"]`);
       const label = option?.textContent?.trim() || checkbox?.parentElement?.textContent?.trim();
-      if (label) fieldLabels.push(label);
+      if (label && tags.length < 12) add(label);
     }
   }
-  fieldLabels.forEach(label => {
-    if (tags.length < 12) add(label);
-  });
-
   return tags.slice(0, 12);
+}
+
+function youtubeVideoId(rawUrl) {
+  try {
+    const url = new URL(rawUrl);
+    const host = url.hostname.replace(/^www\./, '').toLowerCase();
+    if (host === 'youtu.be') return url.pathname.split('/').filter(Boolean)[0] || '';
+    if (host.endsWith('youtube.com')) {
+      if (url.pathname === '/watch') return url.searchParams.get('v') || '';
+      return url.pathname.match(/^\/(?:shorts|embed|live)\/([^/?#]+)/)?.[1] || '';
+    }
+  } catch {}
+  return '';
+}
+
+function resolveThumbnail(result) {
+  const input = document.querySelector('#thumbnailUrl');
+  const existing = input?.value.trim();
+  if (existing) return existing;
+  if (result.thumbnailUrl && /^https?:\/\//i.test(result.thumbnailUrl)) return result.thumbnailUrl;
+  const videoId = youtubeVideoId(urlInput.value.trim());
+  return videoId ? `https://i.ytimg.com/vi/${encodeURIComponent(videoId)}/hqdefault.jpg` : '';
+}
+
+function updateThumbnailPreview(thumbnailUrl, result) {
+  if (!thumbnailUrl) return;
+  const preview = document.querySelector('#metadataPreview');
+  if (!preview) return;
+  preview.hidden = false;
+  preview.replaceChildren();
+  const image = document.createElement('img');
+  image.src = thumbnailUrl;
+  image.alt = '';
+  const copy = document.createElement('div');
+  const title = document.createElement('strong');
+  title.textContent = result.title || document.querySelector('#title')?.value || 'Recurso reconocido';
+  const meta = document.createElement('p');
+  meta.className = 'muted';
+  meta.textContent = `${result.provider || document.querySelector('#provider')?.value || 'Enlace'} · ${result.resourceType || document.querySelector('#resourceType')?.value || 'link'}`;
+  copy.append(title, meta);
+  preview.append(image, copy);
 }
 
 function applySuggestions(result) {
@@ -117,6 +137,12 @@ function applySuggestions(result) {
   if (result.provider) document.querySelector('#provider').value = result.provider;
   if (result.resourceType) document.querySelector('#resourceType').value = result.resourceType;
 
+  const thumbnailUrl = resolveThumbnail(result);
+  if (thumbnailUrl) {
+    document.querySelector('#thumbnailUrl').value = thumbnailUrl;
+    updateThumbnailPreview(thumbnailUrl, result);
+  }
+
   const tags = thematicTags(result);
   const tagInput = document.querySelector('#tags');
   const existing = tagInput.value.split(',').map(normalizeTag).filter(Boolean);
@@ -124,15 +150,11 @@ function applySuggestions(result) {
   const seen = new Set();
   [...existing, ...tags].forEach(tag => {
     const key = tag.toLocaleLowerCase('es');
-    if (!seen.has(key) && merged.length < 12) {
-      seen.add(key);
-      merged.push(tag);
-    }
+    if (!seen.has(key) && merged.length < 12) { seen.add(key); merged.push(tag); }
   });
   tagInput.value = merged.join(', ');
-
   applyFieldValues(result.fieldValues);
-  return tags.length;
+  return { tagCount: tags.length, hasThumbnail: Boolean(thumbnailUrl) };
 }
 
 async function completeWithGemini(button) {
@@ -157,8 +179,9 @@ async function completeWithGemini(button) {
         fields: configuredFields()
       })
     });
-    const tagCount = applySuggestions(result);
-    message.textContent = `Sugerencias de Gemini aplicadas (${result.model}), incluidas ${tagCount} etiquetas temáticas. Revisa los campos antes de guardar.`;
+    const applied = applySuggestions(result);
+    const thumbnailText = applied.hasThumbnail ? ' y miniatura' : '';
+    message.textContent = `Sugerencias de Gemini aplicadas (${result.model}), incluidas ${applied.tagCount} etiquetas${thumbnailText}. Revisa los campos antes de guardar.`;
     document.querySelector('#title')?.focus();
   } catch (error) {
     message.textContent = `${error.message} El reconocimiento normal sigue disponible.`;
