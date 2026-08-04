@@ -18,15 +18,33 @@
         <label>Contraseña<input id="password" type="password" autocomplete="current-password" minlength="10" required></label>
         <button class="button" type="submit">Entrar</button>
       </form>
+      <p><a class="button button-secondary" href="#password-recovery">He olvidado mi contraseña</a></p>
       <p id="message"></p>
     </section>
-    <section class="panel auth-panel">
-      <p class="eyebrow">Recuperación</p><h2>Restablecer contraseña del propietario</h2><p>Necesitas el valor actual de <code>ADMIN_SETUP_TOKEN</code> configurado en Railway.</p>
-      <form id="resetForm" class="share-form"><label>Token de configuración<input id="resetSetupToken" type="password" required></label><label>Correo del propietario<input id="resetEmail" type="email" required></label><label>Nueva contraseña<input id="resetPassword" type="password" minlength="10" required></label><button class="button button-secondary" type="submit">Cambiar contraseña</button></form>
+    <section id="password-recovery" class="panel auth-panel" tabindex="-1">
+      <p class="eyebrow">Recuperación</p>
+      <h2>Restablecer contraseña del propietario</h2>
+      <p>Necesitas el valor actual de <code>ADMIN_SETUP_TOKEN</code> configurado en Railway.</p>
+      <form id="resetForm" class="share-form">
+        <label>Token de configuración<input id="resetSetupToken" type="password" autocomplete="off" required></label>
+        <label>Correo del propietario<input id="resetEmail" type="email" autocomplete="username" required></label>
+        <label>Nueva contraseña<input id="resetPassword" type="password" autocomplete="new-password" minlength="10" required></label>
+        <button class="button button-secondary" type="submit">Cambiar contraseña</button>
+      </form>
     </section>
-    <details class="panel auth-panel"><summary>Primera configuración</summary><p class="eyebrow">Solo para una instalación nueva</p><h2>Crear administrador</h2><form id="setupForm" class="share-form"><label>Token de configuración<input id="setupToken" type="password" required></label><label>Nombre visible<input id="displayName" required></label><label>Nombre del grupo<input id="groupName" required></label><button class="button button-secondary" type="submit">Inicializar aplicación</button></form></details>
+    <details class="panel auth-panel">
+      <summary>Primera configuración</summary>
+      <p class="eyebrow">Solo para una instalación nueva</p>
+      <h2>Crear administrador</h2>
+      <form id="setupForm" class="share-form">
+        <label>Token de configuración<input id="setupToken" type="password" required></label>
+        <label>Nombre visible<input id="displayName" required></label>
+        <label>Nombre del grupo<input id="groupName" required></label>
+        <button class="button button-secondary" type="submit">Inicializar aplicación</button>
+      </form>
+    </details>
   </main>
   <script src="./js/config.js"></script>
-  <script type="module" src="./js/login.js"></script>
+  <script type="module" src="./js/login.js?v=2"></script>
 </body>
 </html>
