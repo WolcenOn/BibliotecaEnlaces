@@ -1,0 +1,175 @@
+name: Store Gemini tags on resources
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/store-gemini-tags-on-resource.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+      - name: Store generated tags directly on resources
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          migration = Path('backend/internal/database/migrations/012_resource_gemini_tags.sql')
+          migration.write_text("""ALTER TABLE resources
+ADD COLUMN IF NOT EXISTS gemini_tags TEXT NOT NULL DEFAULT '';
+
+CREATE INDEX IF NOT EXISTS resources_gemini_tags_search_idx
+ON resources USING GIN (to_tsvector('simple', gemini_tags));
+""")
+
+          path = Path('backend/cmd/api/configurable_resources.go')
+          text = path.read_text()
+          text = text.replace('\tTags            []string            `json:"tags"`\n', '\tTags            []string            `json:"tags"`\n\tGeminiTags      string              `json:"geminiTags"`\n')
+          text = text.replace('thumbnail_url,original_comment,source_type,source_author,source_date,created_by)\n\t\tVALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)', 'thumbnail_url,original_comment,source_type,source_author,source_date,created_by,gemini_tags)\n\t\tVALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)')
+          text = text.replace('in.SourceType, in.SourceAuthor, in.SourceDate, claims.UserID,\n\t).Scan(&resourceID)', 'in.SourceType, in.SourceAuthor, in.SourceDate, claims.UserID, cleanGeminiTags(in.GeminiTags),\n\t).Scan(&resourceID)')
+          start = text.find('\n\tfor _, tagName := range in.Tags {')
+          if start != -1:
+              end = text.find('\n\tif err := tx.Commit', start)
+              if end == -1:
+                  raise SystemExit('tag loop end not found')
+              text = text[:start] + '\n' + text[end:]
+          helper = '''
+func cleanGeminiTags(value string) string {
+\tseen := map[string]bool{}
+\tclean := make([]string, 0, 12)
+\tfor _, raw := range strings.Split(value, ",") {
+\t\ttag := strings.TrimSpace(raw)
+\t\tkey := strings.ToLower(tag)
+\t\tif tag == "" || seen[key] || len([]rune(tag)) > 50 {
+\t\t\tcontinue
+\t\t}
+\t\tseen[key] = true
+\t\tclean = append(clean, tag)
+\t\tif len(clean) == 12 {
+\t\t\tbreak
+\t\t}
+\t}
+\treturn strings.Join(clean, ", ")
+}
+
+'''
+          if 'func cleanGeminiTags(' not in text:
+              text = text.replace('func nullable(value string) any {', helper + 'func nullable(value string) any {')
+          path.write_text(text)
+
+          path = Path('backend/cmd/api/resource_social.go')
+          text = path.read_text()
+          text = text.replace('r.original_comment,r.created_at,r.created_by,u.display_name,', 'r.original_comment,r.gemini_tags,r.created_at,r.created_by,u.display_name,')
+          text = text.replace("OR r.provider ILIKE '%'||$3||'%')", "OR r.provider ILIKE '%'||$3||'%' OR r.gemini_tags ILIKE '%'||$3||'%')")
+          text = text.replace('var id, url, title, description, resourceType, provider, thumbnail, comment, createdBy, addedByName string', 'var id, url, title, description, resourceType, provider, thumbnail, comment, geminiTags, createdBy, addedByName string')
+          text = text.replace('&thumbnail, &comment, &createdAt,', '&thumbnail, &comment, &geminiTags, &createdAt,')
+          text = text.replace('"originalComment": comment, "createdAt": createdAt,', '"originalComment": comment, "geminiTags": geminiTags, "createdAt": createdAt,')
+          path.write_text(text)
+
+          path = Path('backend/cmd/api/gemini.go')
+          text = path.read_text()
+          # Restore free thematic tags regardless of whether the earlier restriction workflow ran.
+          if 'existingTags, err := a.existingTagNames' in text:
+              block_start = text.index('\texistingTags, err := a.existingTagNames')
+              block_end = text.index('\n\tprimary :=', block_start)
+              text = text[:block_start] + text[block_end+1:]
+          text = text.replace('Para tags usa exclusivamente valores exactos de la lista de etiquetas existentes. No inventes, traduzcas, reformules ni crees etiquetas nuevas. Si ninguna encaja, devuelve una lista vacía.', 'Genera entre 6 y 12 etiquetas temáticas concretas, breves y útiles para buscar y filtrar este recurso. Evita términos genéricos como recurso, tutorial, vídeo, documento o contenido.')
+          text = text.replace('\nEtiquetas existentes: %s', '')
+          text = text.replace('in.ResourceType, strings.Join(existingTags, ", "), string(fieldJSON)', 'in.ResourceType, string(fieldJSON)')
+          text = text.replace('tagResponseSchema(existingTags)', 'map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "minItems": 1, "maxItems": 12}')
+          text = text.replace('validateEnrichment(&out, in, existingTags)', 'validateEnrichment(&out, in)')
+          text = text.replace('func validateEnrichment(out *enrichResponse, in enrichRequest, existingTags []string) {', 'func validateEnrichment(out *enrichResponse, in enrichRequest) {')
+          helper_start = text.find('func (a *api) existingTagNames(')
+          if helper_start != -1:
+              helper_end = text.find('func callGemini(', helper_start)
+              text = text[:helper_start] + text[helper_end:]
+          # Replace catalogue validation if present.
+          marker = '\tallowedTags := make(map[string]string, len(existingTags))'
+          if marker in text:
+              s = text.index(marker)
+              e = text.index('\n\tvalid :=', s)
+              replacement = '''\tseenTags := map[string]bool{}
+\tcleanTags := make([]string, 0, len(out.Tags))
+\tfor _, tag := range out.Tags {
+\t\ttag = strings.TrimSpace(tag)
+\t\tkey := strings.ToLower(tag)
+\t\tif tag == "" || seenTags[key] || len([]rune(tag)) > 50 {
+\t\t\tcontinue
+\t\t}
+\t\tseenTags[key] = true
+\t\tcleanTags = append(cleanTags, tag)
+\t\tif len(cleanTags) == 12 {
+\t\t\tbreak
+\t\t}
+\t}
+\tout.Tags = cleanTags
+'''
+              text = text[:s] + replacement + text[e:]
+          path.write_text(text)
+
+          path = Path('frontend/js/resources.js')
+          text = path.read_text()
+          text = text.replace("fieldValues:collectFieldValues(),tags:$('#tags').value.split(',').map(v=>v.trim()).filter(Boolean)", "fieldValues:collectFieldValues(),geminiTags:$('#tags').value.trim()")
+          text = text.replace("${item.description?`<p>${esc(item.description)}</p>`:''}<div class=\"meta\">", "${item.description?`<p>${esc(item.description)}</p>`:''}${item.geminiTags?`<div class=\"meta\">${item.geminiTags.split(',').map(tag=>`<span class=\"chip\">${esc(tag.trim())}</span>`).join('')}</div>`:''}<div class=\"meta\">")
+          path.write_text(text)
+
+          path = Path('frontend/js/gemini-enrich.js')
+          text = path.read_text()
+          start = text.find('function thematicTags(result) {')
+          if start != -1:
+              end = text.find('\nfunction applySuggestions(result) {', start)
+              text = text[:start] + '''function thematicTags(result) {
+  const tags = [];
+  const seen = new Set();
+  (Array.isArray(result.tags) ? result.tags : []).forEach(value => {
+    const tag = normalizeTag(value);
+    const key = tag.toLocaleLowerCase('es');
+    if (!tag || seen.has(key)) return;
+    seen.add(key);
+    tags.push(tag);
+  });
+  return tags.slice(0, 12);
+}
+''' + text[end:]
+          path.write_text(text)
+
+          path = Path('frontend/resources.html')
+          text = path.read_text().replace('Etiquetas<input id="tags"', 'Etiquetas de Gemini<input id="tags"')
+          text = text.replace('gemini-enrich.js?v=3', 'gemini-enrich.js?v=5').replace('gemini-enrich.js?v=4', 'gemini-enrich.js?v=5')
+          path.write_text(text)
+
+          path = Path('frontend/sw.js')
+          text = path.read_text()
+          import re
+          text = re.sub(r'biblioteca-enlaces-v\d+', 'biblioteca-enlaces-v24', text, count=1)
+          text = text.replace('gemini-enrich.js?v=3', 'gemini-enrich.js?v=5').replace('gemini-enrich.js?v=4', 'gemini-enrich.js?v=5')
+          path.write_text(text)
+          PY
+      - name: Format and test backend
+        working-directory: backend
+        run: |
+          gofmt -w ./cmd/api
+          go test ./...
+      - name: Check frontend modules
+        run: |
+          node --check frontend/js/resources.js
+          node --check frontend/js/gemini-enrich.js
+      - name: Commit changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add backend frontend
+          git commit -m "Store Gemini tags directly on resources"
+          git push
