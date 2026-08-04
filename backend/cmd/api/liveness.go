@@ -9,8 +9,8 @@ import (
 // not restart a healthy process because PostgreSQL is briefly unavailable.
 func (a *api) livenessHealth(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{
-		"status": "ok",
+		"status":  "ok",
 		"service": "api",
-		"time": time.Now().UTC(),
+		"time":    time.Now().UTC(),
 	})
 }
