@@ -5,14 +5,6 @@ const inspectButton = document.querySelector('#inspectButton');
 const urlInput = document.querySelector('#resourceUrl');
 const message = document.querySelector('#formMessage');
 
-const tagStopWords = new Set([
-  'para', 'como', 'desde', 'hasta', 'sobre', 'entre', 'hacia', 'este', 'esta', 'estos', 'estas',
-  'esto', 'esa', 'ese', 'esos', 'esas', 'aquel', 'aquella', 'the', 'and', 'with', 'from', 'that',
-  'una', 'uno', 'unos', 'unas', 'del', 'las', 'los', 'por', 'con', 'sin', 'que', 'sus', 'son',
-  'más', 'muy', 'también', 'puede', 'pueden', 'cómo', 'guía', 'tutorial', 'curso', 'video', 'vídeo',
-  'documento', 'recurso', 'enlace', 'página', 'introducción', 'información', 'contenido', 'ejemplo'
-]);
-
 function configuredFields() {
   const groups = new Map();
   document.querySelectorAll('[data-field-id]').forEach(control => {
@@ -21,7 +13,6 @@ function configuredFields() {
     if (!groups.has(id)) groups.set(id, []);
     groups.get(id).push(control);
   });
-
   return [...groups.entries()].map(([id, controls]) => {
     const first = controls[0];
     const container = first.closest('.field');
@@ -41,9 +32,8 @@ function applyFieldValues(values = []) {
     const controls = [...document.querySelectorAll(`[data-field-id="${CSS.escape(suggestion.fieldId)}"]`)];
     if (!controls.length) continue;
     const selected = new Set(suggestion.optionIds || []);
-    if (controls[0].type === 'checkbox') {
-      controls.forEach(control => { control.checked = selected.has(control.value); });
-    } else {
+    if (controls[0].type === 'checkbox') controls.forEach(control => { control.checked = selected.has(control.value); });
+    else {
       const value = [...selected][0];
       if (value && [...controls[0].options].some(option => option.value === value)) controls[0].value = value;
     }
@@ -56,38 +46,32 @@ function normalizeTag(value) {
 }
 
 function thematicTags(result) {
+  const blocked = new Set(['recurso','enlace','página','video','vídeo','documento','tutorial','guía','contenido','información','educación','tecnología']);
   const tags = [];
   const seen = new Set();
-  const add = value => {
+  (Array.isArray(result.tags) ? result.tags : []).forEach(value => {
     const tag = normalizeTag(value);
     const key = tag.toLocaleLowerCase('es');
-    if (!tag || tag.length < 3 || tag.length > 45 || tagStopWords.has(key) || seen.has(key)) return;
+    if (!tag || blocked.has(key) || seen.has(key) || tag.length > 50) return;
     seen.add(key);
     tags.push(tag);
-  };
+  });
+  return tags.slice(0, 8);
+}
 
-  (Array.isArray(result.tags) ? result.tags : []).forEach(add);
-  const source = `${result.title || ''} ${result.description || ''}`.normalize('NFKC')
-    .replace(/https?:\/\/\S+/g, ' ').replace(/[^\p{L}\p{N}+#.\-]+/gu, ' ');
-  const words = source.split(/\s+/).map(normalizeTag).filter(Boolean);
-  const frequencies = new Map();
-  for (const word of words) {
-    const key = word.toLocaleLowerCase('es');
-    if (word.length < 4 || tagStopWords.has(key) || /^\d+$/.test(word)) continue;
-    frequencies.set(word, (frequencies.get(word) || 0) + 1);
-  }
-  [...frequencies.entries()].sort((a, b) => b[1] - a[1] || b[0].length - a[0].length)
-    .forEach(([word]) => { if (tags.length < 10) add(word); });
+function metadataScore(value) {
+  const text = String(value || '').trim();
+  if (!text) return 0;
+  const generic = /^(recurso|contenido|información|página web|documento|vídeo|video|tutorial)(\s|$)/i.test(text);
+  const meaningfulWords = text.split(/\s+/).filter(word => word.length > 3).length;
+  return (generic ? -20 : 0) + Math.min(text.length, 180) + meaningfulWords * 8;
+}
 
-  for (const suggestion of result.fieldValues || []) {
-    for (const optionId of suggestion.optionIds || []) {
-      const option = document.querySelector(`[data-field-id="${CSS.escape(suggestion.fieldId)}"] option[value="${CSS.escape(optionId)}"]`);
-      const checkbox = document.querySelector(`[data-field-id="${CSS.escape(suggestion.fieldId)}"][value="${CSS.escape(optionId)}"]`);
-      const label = option?.textContent?.trim() || checkbox?.parentElement?.textContent?.trim();
-      if (label && tags.length < 12) add(label);
-    }
-  }
-  return tags.slice(0, 12);
+function chooseBetter(current, suggested) {
+  const existing = String(current || '').trim();
+  const candidate = String(suggested || '').trim();
+  if (!candidate) return existing;
+  return metadataScore(candidate) > metadataScore(existing) + 8 ? candidate : existing || candidate;
 }
 
 function youtubeVideoId(rawUrl) {
@@ -123,7 +107,7 @@ function updateThumbnailPreview(thumbnailUrl, result) {
   image.alt = '';
   const copy = document.createElement('div');
   const title = document.createElement('strong');
-  title.textContent = result.title || document.querySelector('#title')?.value || 'Recurso reconocido';
+  title.textContent = document.querySelector('#title')?.value || result.title || 'Recurso reconocido';
   const meta = document.createElement('p');
   meta.className = 'muted';
   meta.textContent = `${result.provider || document.querySelector('#provider')?.value || 'Enlace'} · ${result.resourceType || document.querySelector('#resourceType')?.value || 'link'}`;
@@ -132,8 +116,10 @@ function updateThumbnailPreview(thumbnailUrl, result) {
 }
 
 function applySuggestions(result) {
-  if (result.title) document.querySelector('#title').value = result.title;
-  if (result.description) document.querySelector('#description').value = result.description;
+  const titleInput = document.querySelector('#title');
+  const descriptionInput = document.querySelector('#description');
+  titleInput.value = chooseBetter(titleInput.value, result.title);
+  descriptionInput.value = chooseBetter(descriptionInput.value, result.description);
   if (result.provider) document.querySelector('#provider').value = result.provider;
   if (result.resourceType) document.querySelector('#resourceType').value = result.resourceType;
 
@@ -145,14 +131,7 @@ function applySuggestions(result) {
 
   const tags = thematicTags(result);
   const tagInput = document.querySelector('#tags');
-  const existing = tagInput.value.split(',').map(normalizeTag).filter(Boolean);
-  const merged = [];
-  const seen = new Set();
-  [...existing, ...tags].forEach(tag => {
-    const key = tag.toLocaleLowerCase('es');
-    if (!seen.has(key) && merged.length < 12) { seen.add(key); merged.push(tag); }
-  });
-  tagInput.value = merged.join(', ');
+  tagInput.value = tags.join(', ');
   applyFieldValues(result.fieldValues);
   return { tagCount: tags.length, hasThumbnail: Boolean(thumbnailUrl) };
 }
@@ -164,8 +143,7 @@ async function completeWithGemini(button) {
   inspectButton.disabled = true;
   message.textContent = /\.pdf(?:$|[?#])/i.test(url) || document.querySelector('#resourceType').value === 'pdf'
     ? 'Gemini está leyendo el PDF y preparando sugerencias…'
-    : 'Gemini está analizando y clasificando el recurso…';
-
+    : 'Gemini está analizando el tema concreto del recurso…';
   try {
     const result = await api(`/api/v1/groups/${encodeURIComponent(groupSelect.value)}/resources/enrich`, {
       method: 'POST',
@@ -181,7 +159,7 @@ async function completeWithGemini(button) {
     });
     const applied = applySuggestions(result);
     const thumbnailText = applied.hasThumbnail ? ' y miniatura' : '';
-    message.textContent = `Sugerencias de Gemini aplicadas (${result.model}), incluidas ${applied.tagCount} etiquetas${thumbnailText}. Revisa los campos antes de guardar.`;
+    message.textContent = `Sugerencias específicas de Gemini aplicadas (${result.model}), incluidas ${applied.tagCount} etiquetas${thumbnailText}. Revisa los campos antes de guardar.`;
     document.querySelector('#title')?.focus();
   } catch (error) {
     message.textContent = `${error.message} El reconocimiento normal sigue disponible.`;
