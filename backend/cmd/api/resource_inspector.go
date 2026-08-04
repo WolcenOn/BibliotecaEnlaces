@@ -32,12 +32,12 @@ type resourceInspection struct {
 }
 
 var (
-	titlePattern = regexp.MustCompile(`(?is)<title[^>]*>(.*?)</title>`)
-	metaPattern  = regexp.MustCompile(`(?is)<meta\s+[^>]*>`)
-	attrPattern  = regexp.MustCompile(`(?is)([a-zA-Z_:][-a-zA-Z0-9_:.]*)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))`)
-	paragraphPattern = regexp.MustCompile(`(?is)<p(?:\s+[^>]*)?>(.*?)</p>`)
+	titlePattern       = regexp.MustCompile(`(?is)<title[^>]*>(.*?)</title>`)
+	metaPattern        = regexp.MustCompile(`(?is)<meta\s+[^>]*>`)
+	attrPattern        = regexp.MustCompile(`(?is)([a-zA-Z_:][-a-zA-Z0-9_:.]*)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))`)
+	paragraphPattern   = regexp.MustCompile(`(?is)<p(?:\s+[^>]*)?>(.*?)</p>`)
 	scriptStylePattern = regexp.MustCompile(`(?is)<(script|style|noscript)[^>]*>.*?</\1>`)
-	spacePattern = regexp.MustCompile(`\s+`)
+	spacePattern       = regexp.MustCompile(`\s+`)
 )
 
 func inspectResourceMetadata(w http.ResponseWriter, r *http.Request) {
@@ -174,8 +174,12 @@ func detectTechnicalResource(originalURL, finalURL *url.URL, contentType string)
 	case host == "youtu.be" || strings.Contains(host, "youtube.com"):
 		result.ResourceType, result.Provider = "video", "YouTube"
 		videoID := finalURL.Query().Get("v")
-		if host == "youtu.be" { videoID = strings.Trim(pathname, "/") }
-		if videoID != "" { result.ThumbnailURL = "https://i.ytimg.com/vi/" + url.PathEscape(videoID) + "/hqdefault.jpg" }
+		if host == "youtu.be" {
+			videoID = strings.Trim(pathname, "/")
+		}
+		if videoID != "" {
+			result.ThumbnailURL = "https://i.ytimg.com/vi/" + url.PathEscape(videoID) + "/hqdefault.jpg"
+		}
 	case host == "vimeo.com" || strings.HasSuffix(host, ".vimeo.com"):
 		result.ResourceType, result.Provider = "video", "Vimeo"
 	case host == "docs.google.com" && strings.Contains(pathname, "/document/"):
@@ -202,7 +206,9 @@ func detectTechnicalResource(originalURL, finalURL *url.URL, contentType string)
 		result.ResourceType = "document"
 	default:
 		extension := strings.ToLower(path.Ext(pathname))
-		if extension == ".png" || extension == ".jpg" || extension == ".jpeg" || extension == ".gif" || extension == ".webp" || extension == ".svg" { result.ResourceType = "image" }
+		if extension == ".png" || extension == ".jpg" || extension == ".jpeg" || extension == ".gif" || extension == ".webp" || extension == ".svg" {
+			result.ResourceType = "image"
+		}
 	}
 	_ = originalURL
 	return result
@@ -215,11 +221,15 @@ func extractHTMLMetadata(body []byte, baseURL *url.URL, result *resourceInspecti
 		attributes := parseAttributes(tag)
 		key := strings.ToLower(firstNonEmpty(attributes["property"], attributes["name"], attributes["itemprop"]))
 		content := cleanMetadataText(attributes["content"])
-		if key != "" && content != "" { metadata[key] = content }
+		if key != "" && content != "" {
+			metadata[key] = content
+		}
 	}
 	result.Title = firstNonEmpty(metadata["og:title"], metadata["twitter:title"], metadata["headline"], metadata["name"])
 	if result.Title == "" {
-		if match := titlePattern.FindStringSubmatch(document); len(match) == 2 { result.Title = cleanMetadataText(stripTags(match[1])) }
+		if match := titlePattern.FindStringSubmatch(document); len(match) == 2 {
+			result.Title = cleanMetadataText(stripTags(match[1]))
+		}
 	}
 	result.Description = firstNonEmpty(metadata["og:description"], metadata["twitter:description"], metadata["description"], metadata["article:description"])
 	if isGenericDescription(result.Description) {
@@ -227,17 +237,23 @@ func extractHTMLMetadata(body []byte, baseURL *url.URL, result *resourceInspecti
 	}
 	image := firstNonEmpty(metadata["og:image:secure_url"], metadata["og:image"], metadata["twitter:image"], metadata["twitter:image:src"])
 	if image != "" {
-		if resolved, err := baseURL.Parse(strings.TrimSpace(image)); err == nil && (resolved.Scheme == "http" || resolved.Scheme == "https") { result.ThumbnailURL = resolved.String() }
+		if resolved, err := baseURL.Parse(strings.TrimSpace(image)); err == nil && (resolved.Scheme == "http" || resolved.Scheme == "https") {
+			result.ThumbnailURL = resolved.String()
+		}
 	}
 }
 
 func firstMeaningfulParagraph(document string) string {
 	cleaned := scriptStylePattern.ReplaceAllString(document, " ")
 	for _, match := range paragraphPattern.FindAllStringSubmatch(cleaned, -1) {
-		if len(match) != 2 { continue }
+		if len(match) != 2 {
+			continue
+		}
 		text := cleanMetadataText(stripTags(match[1]))
 		length := len([]rune(text))
-		if length >= 80 && length <= 600 && !isGenericDescription(text) { return text }
+		if length >= 80 && length <= 600 && !isGenericDescription(text) {
+			return text
+		}
 	}
 	return ""
 }
@@ -245,25 +261,41 @@ func firstMeaningfulParagraph(document string) string {
 func cleanMetadataText(value string) string {
 	value = html.UnescapeString(strings.TrimSpace(value))
 	value = spacePattern.ReplaceAllString(value, " ")
-	if len([]rune(value)) > 600 { value = string([]rune(value)[:600]) }
+	if len([]rune(value)) > 600 {
+		value = string([]rune(value)[:600])
+	}
 	return strings.TrimSpace(value)
 }
 
 func isGenericTitle(value, provider string) bool {
 	value = strings.ToLower(strings.TrimSpace(value))
 	provider = strings.ToLower(strings.TrimSpace(provider))
-	if value == "" { return false }
+	if value == "" {
+		return false
+	}
 	generic := []string{"inicio", "home", "página principal", "welcome", "untitled", "documento sin título", "just a moment", "access denied"}
-	for _, item := range generic { if value == item || value == item+" | "+provider { return true } }
+	for _, item := range generic {
+		if value == item || value == item+" | "+provider {
+			return true
+		}
+	}
 	return value == provider
 }
 
 func isGenericDescription(value string) bool {
 	value = strings.ToLower(strings.TrimSpace(value))
-	if value == "" { return false }
+	if value == "" {
+		return false
+	}
 	generic := []string{"sitio web", "página web", "más información", "descubre más", "haz clic aquí", "welcome", "inicio", "contenido digital", "recurso online"}
-	if len([]rune(value)) < 35 { return true }
-	for _, item := range generic { if value == item || strings.HasPrefix(value, item+".") { return true } }
+	if len([]rune(value)) < 35 {
+		return true
+	}
+	for _, item := range generic {
+		if value == item || strings.HasPrefix(value, item+".") {
+			return true
+		}
+	}
 	return false
 }
 
@@ -278,10 +310,18 @@ func parseAttributes(tag string) map[string]string {
 
 func validatePublicHost(ctx context.Context, hostname string) error {
 	hostname = strings.TrimSpace(strings.ToLower(hostname))
-	if hostname == "" || hostname == "localhost" || strings.HasSuffix(hostname, ".localhost") { return errors.New("el destino no es público") }
+	if hostname == "" || hostname == "localhost" || strings.HasSuffix(hostname, ".localhost") {
+		return errors.New("el destino no es público")
+	}
 	addresses, err := net.DefaultResolver.LookupNetIP(ctx, "ip", hostname)
-	if err != nil || len(addresses) == 0 { return errors.New("no se pudo resolver el dominio") }
-	for _, address := range addresses { if !isPublicAddress(address) { return errors.New("el destino no es público") } }
+	if err != nil || len(addresses) == 0 {
+		return errors.New("no se pudo resolver el dominio")
+	}
+	for _, address := range addresses {
+		if !isPublicAddress(address) {
+			return errors.New("el destino no es público")
+		}
+	}
 	return nil
 }
 
@@ -295,6 +335,10 @@ func stripTags(value string) string {
 }
 
 func firstNonEmpty(values ...string) string {
-	for _, value := range values { if strings.TrimSpace(value) != "" { return strings.TrimSpace(value) } }
+	for _, value := range values {
+		if strings.TrimSpace(value) != "" {
+			return strings.TrimSpace(value)
+		}
+	}
 	return ""
 }
