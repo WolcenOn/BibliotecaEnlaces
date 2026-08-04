@@ -311,11 +311,20 @@ func (a *api) createResource(w http.ResponseWriter, r *http.Request) {
 		if tagName == "" {
 			continue
 		}
+		normalizedTag := strings.ToLower(strings.TrimSpace(tagName))
 		var tagID string
 		err := tx.QueryRow(r.Context(), `
-			INSERT INTO tags(group_id,name,normalized_name) VALUES($1,$2,$3)
-			ON CONFLICT(group_id,normalized_name) DO UPDATE SET name=EXCLUDED.name
-			RETURNING id`, groupID, tagName, strings.ToLower(tagName)).Scan(&tagID)
+			SELECT id
+			FROM tags
+			WHERE group_id=$1 AND LOWER(BTRIM(normalized_name))=$2
+			ORDER BY created_at, id
+			LIMIT 1`, groupID, normalizedTag).Scan(&tagID)
+		if err == pgx.ErrNoRows {
+			err = tx.QueryRow(r.Context(), `
+				INSERT INTO tags(group_id,name,normalized_name)
+				VALUES($1,$2,$3)
+				RETURNING id`, groupID, tagName, normalizedTag).Scan(&tagID)
+		}
 		if err != nil {
 			writeError(w, http.StatusInternalServerError, "could not save tag")
 			return
