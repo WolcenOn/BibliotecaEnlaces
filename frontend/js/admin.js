@@ -32,10 +32,22 @@ function formatDate(value) {
 function requestCard(item) {
   const article = document.createElement('article');
   article.className = 'request-card';
-  article.innerHTML = `<div><strong></strong><p class="muted"></p></div><button class="button" type="button">Aprobar</button>`;
-  article.querySelector('strong').textContent = item.displayName || 'Usuario sin nombre';
-  article.querySelector('p').textContent = item.email || '';
-  article.querySelector('button').dataset.user = String(item.id || '');
+
+  const details = document.createElement('div');
+  const name = document.createElement('strong');
+  name.textContent = item.displayName || 'Usuario sin nombre';
+  const email = document.createElement('p');
+  email.className = 'muted';
+  email.textContent = item.email || '';
+  details.append(name, email);
+
+  const approve = document.createElement('button');
+  approve.className = 'button';
+  approve.type = 'button';
+  approve.textContent = 'Aprobar';
+  approve.dataset.user = String(item.id || '');
+
+  article.append(details, approve);
   return article;
 }
 function memberCard(item) {
@@ -43,29 +55,60 @@ function memberCard(item) {
   const article = document.createElement('article');
   article.className = `member-card${stale ? ' is-stale' : ''}`;
   const protectedOwner = item.role === 'owner';
-  article.innerHTML = `
-    <div><h3></h3><p class="member-email"></p><div class="member-metrics"></div></div>
-    <div><span class="status-badge"></span><p class="role"></p></div>
-    <div><strong>Última actividad</strong><p class="activity"></p></div>
-    <div><strong>Incorporación</strong><p class="joined"></p></div>
-    <div class="member-actions"></div>`;
-  article.querySelector('h3').textContent = item.displayName || 'Sin nombre';
-  article.querySelector('.member-email').textContent = item.email || '';
-  const badge = article.querySelector('.status-badge');
+
+  const identity = document.createElement('div');
+  const name = document.createElement('h3');
+  name.textContent = item.displayName || 'Sin nombre';
+  const email = document.createElement('p');
+  email.className = 'member-email';
+  email.textContent = item.email || '';
+  const metrics = document.createElement('div');
+  metrics.className = 'member-metrics';
+  [`${item.resources || 0} recursos`, `${item.comments || 0} comentarios`, `${item.ratings || 0} votos`].forEach(text => {
+    const chip = document.createElement('span');
+    chip.className = 'chip';
+    chip.textContent = text;
+    metrics.append(chip);
+  });
+  identity.append(name, email, metrics);
+
+  const status = document.createElement('div');
+  const badge = document.createElement('span');
   badge.className = `status-badge status-${item.status}`;
   badge.textContent = stale ? 'Sin actividad reciente' : ({ active: 'Activo', inactive: 'Inactivo', pending: 'Pendiente' }[item.status] || item.status);
-  article.querySelector('.role').textContent = ({ owner: 'Propietario', admin: 'Administrador', member: 'Miembro' }[item.role] || item.role);
-  article.querySelector('.activity').textContent = `${formatDate(item.lastActivity)}${Number.isFinite(daysSince(item.lastActivity)) ? ` · hace ${daysSince(item.lastActivity)} días` : ''}`;
-  article.querySelector('.joined').textContent = formatDate(item.joinedAt);
-  const metrics = article.querySelector('.member-metrics');
-  [`${item.resources || 0} recursos`, `${item.comments || 0} comentarios`, `${item.ratings || 0} votos`].forEach(text => {
-    const chip = document.createElement('span'); chip.className = 'chip'; chip.textContent = text; metrics.append(chip);
-  });
+  const role = document.createElement('p');
+  role.className = 'role';
+  role.textContent = ({ owner: 'Propietario', admin: 'Administrador', member: 'Miembro' }[item.role] || item.role);
+  status.append(badge, role);
+
+  const activityBlock = document.createElement('div');
+  const activityLabel = document.createElement('strong');
+  activityLabel.textContent = 'Última actividad';
+  const activity = document.createElement('p');
+  activity.className = 'activity';
+  activity.textContent = `${formatDate(item.lastActivity)}${Number.isFinite(daysSince(item.lastActivity)) ? ` · hace ${daysSince(item.lastActivity)} días` : ''}`;
+  activityBlock.append(activityLabel, activity);
+
+  const joinedBlock = document.createElement('div');
+  const joinedLabel = document.createElement('strong');
+  joinedLabel.textContent = 'Incorporación';
+  const joined = document.createElement('p');
+  joined.className = 'joined';
+  joined.textContent = formatDate(item.joinedAt);
+  joinedBlock.append(joinedLabel, joined);
+
+  const actions = document.createElement('div');
+  actions.className = 'member-actions';
   if (!protectedOwner && item.status !== 'pending') {
     const edit = document.createElement('button');
-    edit.className = 'button button-secondary'; edit.type = 'button'; edit.dataset.editMember = item.id; edit.textContent = 'Editar';
-    article.querySelector('.member-actions').append(edit);
+    edit.className = 'button button-secondary';
+    edit.type = 'button';
+    edit.dataset.editMember = String(item.id || '');
+    edit.textContent = 'Editar';
+    actions.append(edit);
   }
+
+  article.append(identity, status, activityBlock, joinedBlock, actions);
   return article;
 }
 function renderMembers() {
