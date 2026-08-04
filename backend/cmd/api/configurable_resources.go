@@ -39,7 +39,7 @@ type resourceInput struct {
 	OriginalComment string              `json:"originalComment"`
 	SourceType      string              `json:"sourceType"`
 	SourceAuthor    string              `json:"sourceAuthor"`
-	SourceDate      *time.Time          `json:"sourceDate"`
+	SourceDate      *time.Time           `json:"sourceDate"`
 	FieldValues     map[string][]string `json:"fieldValues"`
 	Tags            []string            `json:"tags"`
 }
@@ -233,6 +233,7 @@ func (a *api) listResources(w http.ResponseWriter, r *http.Request) {
 				"resourceType": resourceType, "provider": provider, "mimeType": mimeType,
 				"thumbnailUrl": thumbnail, "originalComment": comment,
 				"sourceType": sourceType, "sourceAuthor": sourceAuthor,
+				"geminiTags": sourceAuthor,
 				"sourceDate": sourceDate, "createdAt": createdAt,
 			})
 		}
@@ -265,6 +266,11 @@ func (a *api) createResource(w http.ResponseWriter, r *http.Request) {
 	}
 	if in.SourceType == "" {
 		in.SourceType = "manual"
+	}
+	if len(in.Tags) > 0 {
+		in.SourceAuthor = cleanGeminiTags(strings.Join(in.Tags, ","))
+	} else {
+		in.SourceAuthor = cleanGeminiTags(in.SourceAuthor)
 	}
 
 	tx, err := a.db.Begin(r.Context())
@@ -306,34 +312,6 @@ func (a *api) createResource(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	for _, tagName := range in.Tags {
-		tagName = strings.TrimSpace(tagName)
-		if tagName == "" {
-			continue
-		}
-		normalizedTag := strings.ToLower(strings.TrimSpace(tagName))
-		var tagID string
-		err := tx.QueryRow(r.Context(), `
-			SELECT id
-			FROM tags
-			WHERE group_id=$1 AND LOWER(BTRIM(normalized_name))=$2
-			ORDER BY created_at, id
-			LIMIT 1`, groupID, normalizedTag).Scan(&tagID)
-		if err == pgx.ErrNoRows {
-			err = tx.QueryRow(r.Context(), `
-				INSERT INTO tags(group_id,name,normalized_name)
-				VALUES($1,$2,$3)
-				RETURNING id`, groupID, tagName, normalizedTag).Scan(&tagID)
-		}
-		if err != nil {
-			writeError(w, http.StatusInternalServerError, "could not save tag")
-			return
-		}
-		if _, err := tx.Exec(r.Context(), `INSERT INTO resource_tags(resource_id,tag_id) VALUES($1,$2) ON CONFLICT DO NOTHING`, resourceID, tagID); err != nil {
-			writeError(w, http.StatusInternalServerError, "could not attach tag")
-			return
-		}
-	}
 	if err := tx.Commit(r.Context()); err != nil {
 		writeError(w, http.StatusInternalServerError, "could not save resource")
 		return
@@ -374,6 +352,24 @@ func normalizeSlug(value string) string {
 		}
 	}
 	return strings.Trim(b.String(), "-")
+}
+
+func cleanGeminiTags(value string) string {
+	seen := map[string]bool{}
+	clean := make([]string, 0, 12)
+	for _, raw := range strings.Split(value, ",") {
+		tag := strings.TrimSpace(raw)
+		key := strings.ToLower(tag)
+		if tag == "" || seen[key] || len([]rune(tag)) > 50 {
+			continue
+		}
+		seen[key] = true
+		clean = append(clean, tag)
+		if len(clean) == 12 {
+			break
+		}
+	}
+	return strings.Join(clean, ", ")
 }
 
 func nullable(value string) any {
