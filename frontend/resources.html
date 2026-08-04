@@ -7,15 +7,18 @@
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="icon" href="./icons/app-icon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="./css/main.css">
-  <link rel="stylesheet" href="./css/dashboard-cards.css?v=2">
+  <link rel="stylesheet" href="./css/dashboard-cards.css?v=3">
 </head>
 <body>
-<header class="topbar">
-  <div class="brand"><div class="brand-mark">↗</div><div><p class="eyebrow">Biblioteca configurable</p><h1>Recursos</h1></div></div>
-  <nav><a class="button button-secondary" href="./fields.html">Clasificación y plantillas</a><button id="installApp" class="button button-secondary" type="button" hidden>Instalar app</button><button id="logout" class="button button-secondary">Salir</button></nav>
+<header class="topbar compact-topbar">
+  <div class="brand compact-brand"><div class="brand-mark">↗</div><div><p class="eyebrow">Biblioteca configurable</p><h1>Recursos</h1></div></div>
+  <nav class="header-actions"><a class="button button-secondary" href="./fields.html">Clasificación y plantillas</a><button id="installApp" class="button button-quiet" type="button" hidden>Instalar</button><button id="logout" class="button button-quiet">Salir</button></nav>
 </header>
 <main>
-  <section class="active-group panel"><div><p class="eyebrow">Biblioteca activa</p><label class="group-picker"><span class="sr-only">Seleccionar biblioteca</span><select id="groupSelect"></select></label></div><button id="toggleAdd" class="button" type="button">＋ Añadir recurso</button></section>
+  <section class="active-group panel compact-group-bar">
+    <label class="compact-group-picker"><span>Biblioteca:</span><select id="groupSelect"></select></label>
+    <button id="toggleAdd" class="button add-resource-button" type="button">＋ Añadir recurso</button>
+  </section>
 
   <section id="addPanel" class="panel panel-body" hidden>
     <div class="section-heading"><div><p class="eyebrow">Nueva ficha</p><h2>Añadir recurso</h2></div></div>
