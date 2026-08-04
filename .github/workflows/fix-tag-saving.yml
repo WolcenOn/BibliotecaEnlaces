@@ -1,0 +1,75 @@
+name: Fix tag saving compatibility
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/fix-tag-saving.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+      - name: Patch tag persistence
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('backend/cmd/api/configurable_resources.go')
+          text = path.read_text()
+          old = '''\t\tvar tagID string
+\t\terr := tx.QueryRow(r.Context(), `
+\t\t\tINSERT INTO tags(group_id,name,normalized_name) VALUES($1,$2,$3)
+\t\t\tON CONFLICT(group_id,normalized_name) DO UPDATE SET name=EXCLUDED.name
+\t\t\tRETURNING id`, groupID, tagName, strings.ToLower(tagName)).Scan(&tagID)
+\t\tif err != nil {
+\t\t\twriteError(w, http.StatusInternalServerError, "could not save tag")
+\t\t\treturn
+\t\t}
+'''
+          new = '''\t\tnormalizedTag := strings.ToLower(strings.TrimSpace(tagName))
+\t\tvar tagID string
+\t\terr := tx.QueryRow(r.Context(), `
+\t\t\tSELECT id
+\t\t\tFROM tags
+\t\t\tWHERE group_id=$1 AND LOWER(BTRIM(normalized_name))=$2
+\t\t\tORDER BY created_at, id
+\t\t\tLIMIT 1`, groupID, normalizedTag).Scan(&tagID)
+\t\tif err == pgx.ErrNoRows {
+\t\t\terr = tx.QueryRow(r.Context(), `
+\t\t\t\tINSERT INTO tags(group_id,name,normalized_name)
+\t\t\t\tVALUES($1,$2,$3)
+\t\t\t\tRETURNING id`, groupID, tagName, normalizedTag).Scan(&tagID)
+\t\t}
+\t\tif err != nil {
+\t\t\twriteError(w, http.StatusInternalServerError, "could not save tag")
+\t\t\treturn
+\t\t}
+'''
+          if old not in text:
+              raise SystemExit('expected tag persistence block was not found')
+          path.write_text(text.replace(old, new, 1))
+          PY
+      - name: Format and test
+        working-directory: backend
+        run: |
+          gofmt -w ./cmd/api
+          go test ./...
+      - name: Commit patch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add backend/cmd/api/configurable_resources.go
+          git commit -m "Fix tag saving without conflict constraint"
+          git push
