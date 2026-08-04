@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Recientes · Biblioteca de Enlaces</title>
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="stylesheet" href="./css/main.css">
+  <link rel="stylesheet" href="./css/dashboard-cards.css?v=2">
+</head>
+<body data-directory-mode="recent">
+<header class="topbar">
+  <div class="brand"><div class="brand-mark">↗</div><div><p class="eyebrow">Actividad</p><h1>Recursos recientes</h1></div></div>
+  <nav><a class="button button-secondary" href="./resources.html">← Volver al dashboard</a><button id="logout" class="button button-secondary" type="button">Salir</button></nav>
+</header>
+<main class="directory-layout">
+  <section class="panel panel-body">
+    <div class="section-heading"><div><p class="eyebrow">Biblioteca</p><h2>Últimas incorporaciones</h2></div></div>
+    <div class="directory-toolbar">
+      <label class="field">Biblioteca<select id="groupSelect"></select></label>
+      <label class="field">Añadido por<select id="memberFilter"><option value="">Todos los miembros</option></select></label>
+      <label class="field">Proveedor<select id="providerFilter"><option value="">Todos los proveedores</option></select></label>
+      <label class="field field-wide">Buscar<input id="search" type="search" placeholder="Título, descripción, proveedor, etiqueta o autor"></label>
+    </div>
+  </section>
+  <section class="panel panel-body">
+    <div class="section-heading"><div><p class="eyebrow">Resultados</p><h2>Recientes</h2><p id="directoryCount" class="directory-count"></p></div></div>
+    <div id="directoryList" class="directory-list"></div>
+  </section>
+</main>
+<script src="./js/config.js"></script>
+<script type="module" src="./js/auth-gate.js"></script>
+<script type="module" src="./js/dashboard-directory.js?v=1"></script>
+</body>
+</html>
