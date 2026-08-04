@@ -36,7 +36,7 @@ type enrichRequest struct {
 }
 
 type suggestedFieldValue struct {
-	FieldID  string   `json:"fieldId"`
+	FieldID   string   `json:"fieldId"`
 	OptionIDs []string `json:"optionIds"`
 }
 
@@ -121,17 +121,17 @@ Campos configurables: %s`, in.URL, in.Title, in.Description, in.Provider, in.Res
 	schema := map[string]any{
 		"type": "object",
 		"properties": map[string]any{
-			"title": map[string]any{"type": "string"},
-			"description": map[string]any{"type": "string"},
-			"provider": map[string]any{"type": "string"},
+			"title":        map[string]any{"type": "string"},
+			"description":  map[string]any{"type": "string"},
+			"provider":     map[string]any{"type": "string"},
 			"resourceType": map[string]any{"type": "string", "enum": []string{"link", "pdf", "image", "video", "audio", "document", "presentation", "spreadsheet", "interactive"}},
-			"tags": map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "maxItems": 12},
+			"tags":         map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "maxItems": 12},
 			"fieldValues": map[string]any{
 				"type": "array",
 				"items": map[string]any{
 					"type": "object",
 					"properties": map[string]any{
-						"fieldId": map[string]any{"type": "string"},
+						"fieldId":   map[string]any{"type": "string"},
 						"optionIds": map[string]any{"type": "array", "items": map[string]any{"type": "string"}},
 					},
 					"required": []string{"fieldId", "optionIds"},
