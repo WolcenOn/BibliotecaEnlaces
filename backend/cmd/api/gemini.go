@@ -95,15 +95,21 @@ func (a *api) enrichResource(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	model := strings.TrimSpace(os.Getenv("GEMINI_MODEL"))
-	if model == "" {
-		model = "gemini-3.5-flash-lite"
+	primary := strings.TrimSpace(os.Getenv("GEMINI_MODEL"))
+	if primary == "" {
+		primary = "gemini-3.1-flash-lite"
+	}
+	fallback := strings.TrimSpace(os.Getenv("GEMINI_FALLBACK_MODEL"))
+	models := []string{primary}
+	if fallback != "" && fallback != primary {
+		models = append(models, fallback)
 	}
 
 	fieldJSON, _ := json.Marshal(in.Fields)
 	prompt := fmt.Sprintf(`Analiza este recurso para una biblioteca colaborativa en español.
 Devuelve datos breves, objetivos y útiles. No inventes autores, fechas ni datos que no aparezcan en el recurso.
 Conserva los datos existentes cuando sean correctos. La descripción debe tener como máximo 500 caracteres.
+Genera entre 6 y 12 etiquetas temáticas concretas y reutilizables. Evita etiquetas genéricas como recurso, tutorial, vídeo, documento o contenido.
 Para fieldValues usa únicamente fieldId y optionIds que existan en la lista proporcionada. Si no hay evidencia suficiente, omite ese campo.
 
 URL: %s
@@ -125,7 +131,7 @@ Campos configurables: %s`, in.URL, in.Title, in.Description, in.Provider, in.Res
 			"description":  map[string]any{"type": "string"},
 			"provider":     map[string]any{"type": "string"},
 			"resourceType": map[string]any{"type": "string", "enum": []string{"link", "pdf", "image", "video", "audio", "document", "presentation", "spreadsheet", "interactive"}},
-			"tags":         map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "maxItems": 12},
+			"tags":         map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "minItems": 6, "maxItems": 12},
 			"fieldValues": map[string]any{
 				"type": "array",
 				"items": map[string]any{
@@ -144,58 +150,98 @@ Campos configurables: %s`, in.URL, in.Title, in.Description, in.Provider, in.Res
 	payload := map[string]any{
 		"contents": []map[string]any{{"role": "user", "parts": parts}},
 		"generationConfig": map[string]any{
-			"temperature":      0.2,
 			"responseMimeType": "application/json",
 			"responseSchema":   schema,
 			"maxOutputTokens":  2048,
 		},
 	}
 	body, _ := json.Marshal(payload)
-	ctx, cancel := context.WithTimeout(r.Context(), 55*time.Second)
+
+	ctx, cancel := context.WithTimeout(r.Context(), 70*time.Second)
 	defer cancel()
+	client := &http.Client{Timeout: 30 * time.Second}
+	var lastMessage = "Gemini no pudo analizar el recurso."
+
+	for _, model := range models {
+		for attempt := 0; attempt < 3; attempt++ {
+			if attempt > 0 {
+				delay := time.Duration(1<<uint(attempt-1)) * time.Second
+				select {
+				case <-time.After(delay):
+				case <-ctx.Done():
+					writeError(w, http.StatusBadGateway, "Gemini no respondió a tiempo.")
+					return
+				}
+			}
+
+			generated, status, callErr := callGemini(ctx, client, apiKey, model, body)
+			if callErr != nil {
+				lastMessage = "Gemini no respondió a tiempo."
+				continue
+			}
+			if generated.Error != nil && generated.Error.Message != "" {
+				lastMessage = generated.Error.Message
+			}
+			if status >= 400 {
+				if isRetryableGeminiStatus(status) {
+					continue
+				}
+				writeError(w, http.StatusBadGateway, lastMessage)
+				return
+			}
+			if len(generated.Candidates) == 0 || len(generated.Candidates[0].Content.Parts) == 0 {
+				lastMessage = "Gemini no devolvió sugerencias."
+				continue
+			}
+
+			var out enrichResponse
+			if err := json.Unmarshal([]byte(generated.Candidates[0].Content.Parts[0].Text), &out); err != nil {
+				lastMessage = "No se pudieron interpretar las sugerencias de Gemini."
+				continue
+			}
+			validateEnrichment(&out, in)
+			out.Source = "gemini"
+			out.Model = model
+			writeJSON(w, http.StatusOK, out)
+			return
+		}
+	}
+
+	writeError(w, http.StatusBadGateway, lastMessage)
+}
+
+func callGemini(ctx context.Context, client *http.Client, apiKey, model string, body []byte) (geminiGenerateResponse, int, error) {
+	var generated geminiGenerateResponse
 	endpoint := "https://generativelanguage.googleapis.com/v1beta/models/" + url.PathEscape(model) + ":generateContent"
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader(body))
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "No se pudo preparar la consulta a Gemini.")
-		return
+		return generated, 0, err
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("x-goog-api-key", apiKey)
 
-	resp, err := (&http.Client{Timeout: 55 * time.Second}).Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
-		writeError(w, http.StatusBadGateway, "Gemini no respondió a tiempo.")
-		return
+		return generated, 0, err
 	}
 	defer resp.Body.Close()
-	responseBody, _ := io.ReadAll(io.LimitReader(resp.Body, 2<<20))
-	var generated geminiGenerateResponse
-	if json.Unmarshal(responseBody, &generated) != nil {
-		writeError(w, http.StatusBadGateway, "Gemini devolvió una respuesta no válida.")
-		return
+	responseBody, err := io.ReadAll(io.LimitReader(resp.Body, 2<<20))
+	if err != nil {
+		return generated, resp.StatusCode, err
 	}
-	if resp.StatusCode >= 400 || generated.Error != nil {
-		message := "Gemini no pudo analizar el recurso."
-		if generated.Error != nil && generated.Error.Message != "" {
-			message = generated.Error.Message
-		}
-		writeError(w, http.StatusBadGateway, message)
-		return
+	if err := json.Unmarshal(responseBody, &generated); err != nil {
+		return generated, resp.StatusCode, err
 	}
-	if len(generated.Candidates) == 0 || len(generated.Candidates[0].Content.Parts) == 0 {
-		writeError(w, http.StatusBadGateway, "Gemini no devolvió sugerencias.")
-		return
-	}
+	return generated, resp.StatusCode, nil
+}
 
-	var out enrichResponse
-	if err := json.Unmarshal([]byte(generated.Candidates[0].Content.Parts[0].Text), &out); err != nil {
-		writeError(w, http.StatusBadGateway, "No se pudieron interpretar las sugerencias de Gemini.")
-		return
+func isRetryableGeminiStatus(status int) bool {
+	switch status {
+	case http.StatusTooManyRequests, http.StatusInternalServerError, http.StatusBadGateway, http.StatusServiceUnavailable, http.StatusGatewayTimeout:
+		return true
+	default:
+		return false
 	}
-	validateEnrichment(&out, in)
-	out.Source = "gemini"
-	out.Model = model
-	writeJSON(w, http.StatusOK, out)
 }
 
 func isPDFResource(in enrichRequest) bool {
