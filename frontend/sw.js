@@ -1,4 +1,4 @@
-const CACHE_NAME = 'biblioteca-enlaces-v20';
+const CACHE_NAME = 'biblioteca-enlaces-v21';
 const APP_SHELL = [
   './',
   './index.html',
@@ -24,7 +24,7 @@ const APP_SHELL = [
   './js/resources.js',
   './js/dashboard-cards.js',
   './js/bulk-actions.js?v=1',
-  './js/gemini-enrich.js?v=1',
+  './js/gemini-enrich.js?v=2',
   './js/share-consumer.js',
   './js/library-transfer.js?v=3',
   './js/create-library.js?v=1',
