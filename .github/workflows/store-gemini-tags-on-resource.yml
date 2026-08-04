@@ -80,7 +80,6 @@ func cleanGeminiTags(value string) string {
 
           path = Path('backend/cmd/api/gemini.go')
           text = path.read_text()
-          # Restore free thematic tags regardless of whether the earlier restriction workflow ran.
           if 'existingTags, err := a.existingTagNames' in text:
               block_start = text.index('\texistingTags, err := a.existingTagNames')
               block_end = text.index('\n\tprimary :=', block_start)
@@ -95,7 +94,6 @@ func cleanGeminiTags(value string) string {
           if helper_start != -1:
               helper_end = text.find('func callGemini(', helper_start)
               text = text[:helper_start] + text[helper_end:]
-          # Replace catalogue validation if present.
           marker = '\tallowedTags := make(map[string]string, len(existingTags))'
           if marker in text:
               s = text.index(marker)
