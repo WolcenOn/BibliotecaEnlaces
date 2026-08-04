@@ -16,7 +16,7 @@ func (a *api) resourceDashboard(w http.ResponseWriter, r *http.Request) {
 	addedBy := strings.TrimSpace(r.URL.Query().Get("addedBy"))
 	rows, err := a.db.Query(r.Context(), `
 		SELECT r.id,r.url,r.title,r.description,r.resource_type,r.provider,r.thumbnail_url,
-		       r.original_comment,r.created_at,r.created_by,u.display_name,
+		       r.original_comment,r.source_author,r.created_at,r.created_by,u.display_name,
 		       COALESCE(AVG(rr.value),0),COUNT(DISTINCT rr.user_id),COUNT(DISTINCT rc.id),
 		       EXISTS(SELECT 1 FROM group_members gm WHERE gm.group_id=r.group_id AND gm.user_id=$2 AND gm.status='active' AND gm.role IN ('owner','admin')) OR r.created_by=$2
 		FROM resources r
@@ -24,7 +24,7 @@ func (a *api) resourceDashboard(w http.ResponseWriter, r *http.Request) {
 		LEFT JOIN resource_ratings rr ON rr.resource_id=r.id
 		LEFT JOIN resource_comments rc ON rc.resource_id=r.id
 		WHERE r.group_id=$1
-		  AND ($3='' OR r.title ILIKE '%'||$3||'%' OR r.description ILIKE '%'||$3||'%' OR r.provider ILIKE '%'||$3||'%')
+		  AND ($3='' OR r.title ILIKE '%'||$3||'%' OR r.description ILIKE '%'||$3||'%' OR r.provider ILIKE '%'||$3||'%' OR r.source_author ILIKE '%'||$3||'%')
 		  AND ($4='' OR r.created_by::text=$4)
 		GROUP BY r.id,u.display_name
 		ORDER BY r.created_at DESC
@@ -36,15 +36,15 @@ func (a *api) resourceDashboard(w http.ResponseWriter, r *http.Request) {
 	defer rows.Close()
 	items := make([]map[string]any, 0)
 	for rows.Next() {
-		var id, url, title, description, resourceType, provider, thumbnail, comment, createdBy, addedByName string
+		var id, url, title, description, resourceType, provider, thumbnail, comment, geminiTags, createdBy, addedByName string
 		var createdAt any
 		var rating float64
 		var votes, comments int
 		var canEdit bool
-		if err := rows.Scan(&id, &url, &title, &description, &resourceType, &provider, &thumbnail, &comment, &createdAt, &createdBy, &addedByName, &rating, &votes, &comments, &canEdit); err != nil {
+		if err := rows.Scan(&id, &url, &title, &description, &resourceType, &provider, &thumbnail, &comment, &geminiTags, &createdAt, &createdBy, &addedByName, &rating, &votes, &comments, &canEdit); err != nil {
 			continue
 		}
-		items = append(items, map[string]any{"id": id, "url": url, "title": title, "description": description, "resourceType": resourceType, "provider": provider, "thumbnailUrl": thumbnail, "originalComment": comment, "createdAt": createdAt, "createdBy": createdBy, "addedBy": addedByName, "rating": rating, "votes": votes, "comments": comments, "canEdit": canEdit})
+		items = append(items, map[string]any{"id": id, "url": url, "title": title, "description": description, "resourceType": resourceType, "provider": provider, "thumbnailUrl": thumbnail, "originalComment": comment, "geminiTags": geminiTags, "createdAt": createdAt, "createdBy": createdBy, "addedBy": addedByName, "rating": rating, "votes": votes, "comments": comments, "canEdit": canEdit})
 	}
 	writeJSON(w, http.StatusOK, items)
 }
