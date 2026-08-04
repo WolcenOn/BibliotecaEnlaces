@@ -1,3 +1,4 @@
+# Executes once when this workflow file changes.
 name: Restrict Gemini to existing tags
 
 on:
