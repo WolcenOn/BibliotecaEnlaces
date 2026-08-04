@@ -60,14 +60,24 @@
   </details>
 
   <section class="panel panel-body">
-    <div class="section-heading"><div><p class="eyebrow">Colección</p><h2>Recursos guardados</h2></div><div class="selection-actions"><button id="selectAll" class="button button-secondary" type="button">Seleccionar todo</button><button id="deleteSelected" class="button button-danger" type="button">Eliminar seleccionados</button></div></div>
-    <div id="selectionToolbar" class="selection-toolbar"><span id="selectionCount">0 seleccionados</span><div><button id="exportSelected" class="button button-secondary" type="button">Exportar</button><button id="moveSelected" class="button button-secondary" type="button">Mover</button></div><p id="selectionMessage" class="form-message"></p></div>
+    <div class="section-heading"><div><p class="eyebrow">Colección</p><h2>Recursos guardados</h2><p class="muted">Marca “Seleccionar” en las fichas para copiar enlaces, crear una cola temporal de YouTube o descargar documentos.</p></div></div>
+    <div id="selectionBar" class="selection-bar" hidden>
+      <div><strong><span id="selectedCount">0</span> seleccionados</strong><span class="muted">La selección no borra ningún recurso.</span></div>
+      <div>
+        <button id="selectVisible" class="button button-secondary" type="button">Seleccionar visibles</button>
+        <button id="copySelected" class="button button-secondary" type="button" disabled>Copiar enlaces</button>
+        <button id="sendYoutube" class="button button-secondary" type="button" disabled>Crear cola de YouTube</button>
+        <button id="downloadSelected" class="button button-secondary" type="button" disabled>Descargar documentos</button>
+        <button id="clearSelection" class="button button-secondary" type="button" disabled>Limpiar</button>
+      </div>
+    </div>
+    <p id="selectionMessage" class="form-message"></p>
     <div id="resourceList" class="music-list"></div>
   </section>
 </main>
 
 <dialog id="editDialog"><form id="editForm" method="dialog" class="dialog-card"><div class="dialog-heading"><div><p class="eyebrow">Editar recurso</p><h2>Actualizar ficha</h2></div><button id="closeEdit" class="icon-button" type="button">×</button></div><input id="editId" type="hidden"><label class="field">Título<input id="editTitle" required></label><label class="field">Proveedor<input id="editProvider"></label><label class="field">Descripción<textarea id="editDescription" rows="3"></textarea></label><label class="field">Comentario<textarea id="editComment" rows="3"></textarea></label><label class="field">Miniatura<input id="editThumbnailUrl" type="url"></label><p id="editMessage" class="form-message"></p><div class="dialog-actions"><button id="deleteItem" class="button button-danger" type="button">Eliminar</button><span class="dialog-spacer"></span><button id="cancelEdit" class="button button-secondary" type="button">Cancelar</button><button class="button" type="submit">Guardar cambios</button></div></form></dialog>
 <dialog id="loginDialog" class="login-dialog"><form id="inlineLoginForm" class="login-card"><p class="eyebrow">Acceso privado</p><h2>Iniciar sesión</h2><label>Correo<input id="inlineEmail" type="email" required></label><label>Contraseña<input id="inlinePassword" type="password" required></label><p id="inlineLoginMessage" class="form-message"></p><button class="button" type="submit">Entrar</button></form></dialog>
-<script src="./js/config.js"></script><script src="./js/dashboard-fallback.js"></script><script type="module" src="./js/auth-gate.js"></script><script type="module" src="./js/resources.js?v=2"></script><script type="module" src="./js/dashboard-cards.js"></script><script type="module" src="./js/bulk-actions.js?v=1"></script><script type="module" src="./js/gemini-enrich.js?v=6"></script><script type="module" src="./js/install.js"></script>
+<script src="./js/config.js"></script><script src="./js/dashboard-fallback.js"></script><script type="module" src="./js/auth-gate.js"></script><script type="module" src="./js/resources.js?v=2"></script><script type="module" src="./js/dashboard-cards.js"></script><script type="module" src="./js/bulk-actions.js?v=2"></script><script type="module" src="./js/gemini-enrich.js?v=6"></script><script type="module" src="./js/install.js"></script>
 </body>
 </html>
