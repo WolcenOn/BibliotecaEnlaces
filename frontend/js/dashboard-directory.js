@@ -24,7 +24,7 @@ function matches(item) {
 
 function imageMarkup(item) {
   return item.thumbnailUrl
-    ? `<img src="${esc(item.thumbnailUrl)}" alt="" loading="lazy">`
+    ? `<img src="${esc(item.thumbnailUrl)}" alt="" decoding="async">`
     : '<div class="directory-placeholder">↗</div>';
 }
 
