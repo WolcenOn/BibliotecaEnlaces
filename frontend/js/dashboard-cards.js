@@ -19,7 +19,7 @@ function resourceMap() {
 
 function cardMarkup(item, position = '') {
   const image = item.image
-    ? `<img class="dashboard-card-image" src="${esc(item.image)}" alt="" loading="lazy">`
+    ? `<img class="dashboard-card-image" src="${esc(item.image)}" alt="" decoding="async">`
     : '<div class="dashboard-card-image dashboard-card-placeholder">↗</div>';
   const positionMarkup = position ? `<span class="ranking-position">${position}</span>` : '';
   const classes = position ? 'dashboard-resource-card ranking-resource-card' : 'dashboard-resource-card';
