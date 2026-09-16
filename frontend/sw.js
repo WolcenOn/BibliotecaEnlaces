@@ -1,4 +1,4 @@
-const CACHE_NAME = 'biblioteca-enlaces-v31';
+const CACHE_NAME = 'biblioteca-enlaces-v32';
 const APP_SHELL = [
   './',
   './index.html',
@@ -17,6 +17,7 @@ const APP_SHELL = [
   './css/auth-gate.css',
   './css/fields.css',
   './css/dashboard-cards.css?v=3',
+  './css/mobile-card-fixes.css?v=1',
   './css/admin.css',
   './js/config.js',
   './js/api.js',
@@ -26,8 +27,8 @@ const APP_SHELL = [
   './js/invite.js',
   './js/dashboard-fallback.js',
   './js/resources.js?v=2',
-  './js/dashboard-cards.js',
-  './js/dashboard-directory.js?v=1',
+  './js/dashboard-cards.js?v=1',
+  './js/dashboard-directory.js?v=2',
   './js/bulk-actions.js?v=2',
   './js/gemini-enrich.js?v=6',
   './js/share-consumer.js',
