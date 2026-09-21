@@ -75,11 +75,17 @@ function memberCard(item) {
   const status = document.createElement('div');
   const badge = document.createElement('span');
   badge.className = `status-badge status-${item.status}`;
-  badge.textContent = stale ? 'Sin actividad reciente' : ({ active: 'Activo', inactive: 'Inactivo', pending: 'Pendiente' }[item.status] || item.status);
+  badge.textContent = stale ? 'Sin actividad reciente' : ({ active: 'Activo', rejected: 'Inactivo', pending: 'Pendiente' }[item.status] || item.status);
   const role = document.createElement('p');
   role.className = 'role';
   role.textContent = ({ owner: 'Propietario', admin: 'Administrador', member: 'Miembro' }[item.role] || item.role);
   status.append(badge, role);
+  if (item.accountStatus && item.accountStatus !== 'active') {
+    const accountWarning = document.createElement('p');
+    accountWarning.className = 'account-warning';
+    accountWarning.textContent = `Cuenta: ${({ pending: 'pendiente', suspended: 'suspendida' }[item.accountStatus] || item.accountStatus)}`;
+    status.append(accountWarning);
+  }
 
   const activityBlock = document.createElement('div');
   const activityLabel = document.createElement('strong');
@@ -122,7 +128,7 @@ function renderMembers() {
   replaceChildren(membersList, visible.length ? visible.map(memberCard) : [Object.assign(document.createElement('p'), { className: 'empty-state', textContent: 'No hay miembros que coincidan.' })]);
   $('#activeCount').textContent = members.filter(m => m.status === 'active').length;
   $('#pendingCount').textContent = members.filter(m => m.status === 'pending').length;
-  $('#inactiveCount').textContent = members.filter(m => m.status === 'inactive').length;
+  $('#inactiveCount').textContent = members.filter(m => m.status === 'rejected').length;
   $('#staleCount').textContent = members.filter(isStale).length;
 }
 async function loadRequests() {
@@ -162,7 +168,7 @@ function openMember(id) {
   $('#memberId').value = member.id;
   $('#memberName').value = member.displayName || '';
   $('#memberRole').value = member.role === 'admin' ? 'admin' : 'member';
-  $('#memberStatus').value = member.status === 'inactive' ? 'inactive' : 'active';
+  $('#memberStatus').value = member.status === 'rejected' ? 'rejected' : 'active';
   $('#memberEditMessage').textContent = '';
   memberDialog.showModal();
 }
@@ -211,7 +217,8 @@ $('#inviteForm').addEventListener('submit', async event => {
     const result = await api(`/api/v1/groups/${encodeURIComponent(groupSelect.value)}/invitations`, { method: 'POST', body: JSON.stringify({ expiresHours: Number($('#expiresHours').value), maxUses: Number($('#maxUses').value) }) });
     const invitationUrl = new URL(result.url); invitationUrl.searchParams.set('api', getApiUrl());
     const link = document.createElement('a'); link.href = invitationUrl.toString(); link.textContent = invitationUrl.toString(); link.rel = 'noopener noreferrer';
-    replaceChildren(inviteResult, [document.createTextNode('Enlace: '), link]);
+    const expires = result.expiresAt ? new Date(result.expiresAt).toLocaleString() : '';
+    replaceChildren(inviteResult, [document.createTextNode(expires ? `Enlace válido hasta ${expires}: ` : 'Enlace: '), link]);
   } catch (error) { inviteResult.textContent = error.message; }
 });
 $('#logout').addEventListener('click', () => { setToken(''); location.href = './login.html'; });
