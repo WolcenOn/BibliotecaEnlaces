@@ -7,16 +7,17 @@ import (
 )
 
 type managedMember struct {
-	ID           string     `json:"id"`
-	DisplayName  string     `json:"displayName"`
-	Email        string     `json:"email"`
-	Role         string     `json:"role"`
-	Status       string     `json:"status"`
-	JoinedAt     *time.Time `json:"joinedAt"`
-	LastActivity *time.Time `json:"lastActivity"`
-	Resources    int        `json:"resources"`
-	Comments     int        `json:"comments"`
-	Ratings      int        `json:"ratings"`
+	ID            string     `json:"id"`
+	DisplayName   string     `json:"displayName"`
+	Email         string     `json:"email"`
+	Role          string     `json:"role"`
+	Status        string     `json:"status"`
+	AccountStatus string     `json:"accountStatus"`
+	JoinedAt      *time.Time `json:"joinedAt"`
+	LastActivity  *time.Time `json:"lastActivity"`
+	Resources     int        `json:"resources"`
+	Comments      int        `json:"comments"`
+	Ratings       int        `json:"ratings"`
 }
 
 func (a *api) managedMembers(w http.ResponseWriter, r *http.Request) {
@@ -28,7 +29,7 @@ func (a *api) managedMembers(w http.ResponseWriter, r *http.Request) {
 	}
 
 	rows, err := a.db.Query(r.Context(), `
-		SELECT u.id,u.display_name,u.email,gm.role,gm.status,gm.joined_at,
+		SELECT u.id,u.display_name,u.email,gm.role,gm.status,u.status,gm.joined_at,
 		       GREATEST(
 		         COALESCE(gm.joined_at,gm.created_at),
 		         COALESCE((SELECT MAX(r.created_at) FROM resources r WHERE r.group_id=gm.group_id AND r.created_by=u.id),'-infinity'::timestamptz),
@@ -51,7 +52,7 @@ func (a *api) managedMembers(w http.ResponseWriter, r *http.Request) {
 	items := make([]managedMember, 0)
 	for rows.Next() {
 		var item managedMember
-		if err := rows.Scan(&item.ID, &item.DisplayName, &item.Email, &item.Role, &item.Status, &item.JoinedAt, &item.LastActivity, &item.Resources, &item.Comments, &item.Ratings); err != nil {
+		if err := rows.Scan(&item.ID, &item.DisplayName, &item.Email, &item.Role, &item.Status, &item.AccountStatus, &item.JoinedAt, &item.LastActivity, &item.Resources, &item.Comments, &item.Ratings); err != nil {
 			writeError(w, http.StatusInternalServerError, "could not read managed members")
 			return
 		}
@@ -77,7 +78,12 @@ func (a *api) updateManagedMember(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	in.DisplayName = strings.TrimSpace(in.DisplayName)
-	if in.DisplayName == "" || (in.Role != "member" && in.Role != "admin") || (in.Status != "active" && in.Status != "inactive") {
+	membershipStatus := in.Status
+	if membershipStatus == "inactive" {
+		// Backward compatibility for clients cached before the status vocabulary was aligned.
+		membershipStatus = "rejected"
+	}
+	if in.DisplayName == "" || (in.Role != "member" && in.Role != "admin") || (membershipStatus != "active" && membershipStatus != "rejected") {
 		writeError(w, http.StatusBadRequest, "valid displayName, role and status are required")
 		return
 	}
@@ -98,11 +104,16 @@ func (a *api) updateManagedMember(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer tx.Rollback(r.Context())
-	if _, err := tx.Exec(r.Context(), `UPDATE users SET display_name=$2 WHERE id=$1`, userID, in.DisplayName); err != nil {
+	if membershipStatus == "active" {
+		if _, err := tx.Exec(r.Context(), `UPDATE users SET display_name=$2,status='active',updated_at=NOW() WHERE id=$1`, userID, in.DisplayName); err != nil {
+			writeError(w, http.StatusInternalServerError, "could not activate member account")
+			return
+		}
+	} else if _, err := tx.Exec(r.Context(), `UPDATE users SET display_name=$2,updated_at=NOW() WHERE id=$1`, userID, in.DisplayName); err != nil {
 		writeError(w, http.StatusInternalServerError, "could not update member profile")
 		return
 	}
-	result, err := tx.Exec(r.Context(), `UPDATE group_members SET role=$3,status=$4,joined_at=CASE WHEN $4='active' THEN COALESCE(joined_at,NOW()) ELSE joined_at END WHERE group_id=$1 AND user_id=$2 AND role<>'owner'`, groupID, userID, in.Role, in.Status)
+	result, err := tx.Exec(r.Context(), `UPDATE group_members SET role=$3,status=$4,joined_at=CASE WHEN $4='active' THEN COALESCE(joined_at,NOW()) ELSE joined_at END WHERE group_id=$1 AND user_id=$2 AND role<>'owner'`, groupID, userID, in.Role, membershipStatus)
 	if err != nil || result.RowsAffected() != 1 {
 		writeError(w, http.StatusInternalServerError, "could not update membership")
 		return

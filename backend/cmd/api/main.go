@@ -238,7 +238,7 @@ func (a *api) createInvitation(w http.ResponseWriter, r *http.Request) {
 	if !decodeJSON(w, r, &in) {
 		return
 	}
-	if in.ExpiresHours <= 0 || in.ExpiresHours > 720 {
+	if in.ExpiresHours <= 0 || in.ExpiresHours > 8760 {
 		in.ExpiresHours = 168
 	}
 	if in.MaxUses <= 0 || in.MaxUses > 100 {
